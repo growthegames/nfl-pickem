@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Submit Weekly Pick | NFL Survivor League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <style>
+    iframe {
+      width: 100%;
+      min-height: 700px;
+      border: none;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NFL Survivor League</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">Standings</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>Submit Your Weekly Pick</h2>
+      <p>Use the form below to submit your pick for this week. Make sure it is submitted before the deadline.</p>
+    </section>
+
+    <section>
+      <!-- Replace the src value with your own Google Form embed link -->
+      <iframe src=<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdyyRJeK7eAWpzVEFE2Zm3yskrs5Slyx_5NwjJUmgsO-NXQtg/viewform?embedded=true" width="640" height="3362" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>>
+        Loading…
+      </iframe>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> NFL Survivor League</p>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </footer>
+</body>
+</html>
