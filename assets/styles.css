@@ -1,52 +1,321 @@
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  margin: 0;
-  padding: 0;
-  background: #0b1320;
-  color: #f2f2f2;
+/* ===== Base layout & typography ===== */
+
+:root {
+  --nfl-navy: #013369;
+  --nfl-red: #d50a0a;
+  --nfl-gold: #ffb612;
+  --bg-dark: #0b1020;
+  --bg-card: #111827;
+  --bg-header: #020617;
+  --border-subtle: #1f2937;
+  --text-main: #f9fafb;
+  --text-muted: #d1d5db;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #111827 0, var(--bg-dark) 55%, #020617 100%);
+  color: var(--text-main);
+  min-height: 100vh;
+}
+
+/* ===== Header & navigation ===== */
+
 header {
-  background: #141c2f;
-  padding: 1rem 2rem;
+  background: linear-gradient(90deg, #020617 0%, var(--nfl-navy) 40%, #020617 100%);
+  border-bottom: 3px solid var(--nfl-red);
+  padding: 0.8rem 2rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
 }
 
-h1 {
+header h1 {
   margin: 0;
+  font-family: "Oswald", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 1.4rem;
+}
+
+/* Tiny "league tag" feel if you want to wrap part of the title in a span */
+header h1 span {
+  color: var(--nfl-red);
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 nav a {
-  margin-left: 1rem;
-  color: #f2f2f2;
+  position: relative;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
   text-decoration: none;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   font-weight: 500;
+  border: 1px solid rgba(248, 250, 252, 0.1);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(6px);
+  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 nav a:hover {
-  text-decoration: underline;
+  background: var(--nfl-red);
+  border-color: var(--nfl-red);
+  box-shadow: 0 0 12px rgba(213, 10, 10, 0.5);
+  transform: translateY(-1px);
 }
 
+/* ===== Main content ===== */
+
 main {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 2rem auto;
-  padding: 0 1rem;
+  padding: 0 1rem 3rem;
 }
 
 section {
-  background: #1b2336;
-  border-radius: 8px;
-  padding: 1.5rem;
+  background: radial-gradient(circle at top left, #1e293b 0, var(--bg-card) 45%, #020617 100%);
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
   margin-bottom: 1.5rem;
+  border: 1px solid var(--border-subtle);
+  box-shadow:
+    0 18px 35px rgba(0, 0, 0, 0.65),
+    inset 0 0 0 1px rgba(148, 163, 184, 0.06);
 }
 
-footer {
-  text-align: center;
-  padding: 1rem;
-  background: #141c2f;
-  margin-top: 2rem;
+/* ===== Headings & text ===== */
+
+h2 {
+  font-family: "Oswald", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 1.1rem;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid rgba(148, 163, 184, 0.4);
+}
+
+h3 {
+  font-family: "Oswald", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 1rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+p {
+  margin: 0.4rem 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+ul {
+  margin: 0.25rem 0 0.75rem 1.2rem;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+li + li {
+  margin-top: 0.25rem;
+}
+
+/* Small inline "pill" for key info (e.g. buy-in, pot size) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ===== Forms (submit page) ===== */
+
+form {
+  background: radial-gradient(circle at top, #020617 0, #0b1220 40%, #020617 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.7);
+}
+
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
   font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-main);
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  margin-bottom: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: var(--text-main);
+  font-size: 0.92rem;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--nfl-gold);
+  box-shadow: 0 0 0 1px rgba(255, 182, 18, 0.5);
+}
+
+/* Submit button styled like a gameday CTA */
+
+button,
+input[type="submit"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.55rem 1.4rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--nfl-red), #b80606);
+  color: #f9fafb;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(248, 250, 252, 0.06);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+button:hover,
+input[type="submit"]:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.95),
+    0 0 18px rgba(213, 10, 10, 0.7);
+}
+
+button:active,
+input[type="submit"]:active {
+  transform: translateY(0);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.8);
+}
+
+/* Status messages under the form */
+
+.message {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.message.success {
+  color: #4ade80;
+}
+
+.message.error {
+  color: #f97373;
+}
+
+/* ===== Tables (standings page) ===== */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+th,
+td {
+  border: 1px solid var(--border-subtle);
+  padding: 0.4rem 0.5rem;
+  text-align: center;
+}
+
+th {
+  background: linear-gradient(180deg, #020617 0, #111827 60%, #020617 100%);
+  font-family: "Oswald", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+}
+
+tbody tr:nth-child(odd) {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.75);
+}
+
+/* Make the table horizontally scrollable on mobile */
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* ===== Iframe containers (Form & Sheet embeds) ===== */
+
+iframe {
+  width: 100%;
+  min-height: 620px;
+  border: none;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.8);
+}
+
+/* ===== Footer ===== */
+
+footer {
+  background: var(--bg-header);
+  border-top: 2px solid var(--border-subtle);
+  text-align: center;
+  padding: 0.9rem 1rem;
+  font-size: 0.78rem;
+  color: #9ca3af;
 }
