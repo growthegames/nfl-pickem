@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Standings | NFL Survivor League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <style>
+    iframe {
+      width: 100%;
+      min-height: 600px;
+      border: none;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NFL Survivor League</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">Standings</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>Current Standings</h2>
+      <p>See who is still alive, which teams have been used, and weekly results below.</p>
+    </section>
+
+    <section>
+      <!-- Replace the src with your Google Sheets embed URL -->
+      <iframe src=https://docs.google.com/spreadsheets/d/1UcdOFeLdQe9tdx41Yu09ThTmh-MQETR8ceegHZQNYAE/edit?usp=sharing>
+        Loading standings…
+      </iframe>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> NFL Survivor League</p>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </footer>
+</body>
+</html>
