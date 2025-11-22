@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NFL Survivor League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>NFL Survivor League</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">Standings</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>How It Works</h2>
+      <p>Buy-in: $50. Each week you pick one NFL team to win. You can't reuse teams. Lose a week, you're out. Last player standing wins the pot.</p>
+    </section>
+    <section>
+      <h2>Key Rules</h2>
+      <ul>
+        <li>One pick per week.</li>
+        <li>You may not pick the same team more than once all season.</li>
+        <li>Picks must be submitted before the first game of the week (or custom deadline).</li>
+        <li>If your team loses or ties, you are eliminated.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> NFL Survivor League</p>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </footer>
+</body>
+</html>
