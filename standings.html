@@ -2,25 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Rankings | NFL Survivor League</title>
+  <title>My Standings | NFL Survivor League</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/styles.css">
 
-  <style>
-    iframe {
-      width: 100%;
-      min-height: 600px;
-      border: none;
-      background: #fff;
-    }
-  </style>
+  <!-- Fonts + main styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css" />
+
+  <!-- Supabase JS (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>NFL Survivor League</h1>
+    <h1><span>NFL</span> Survivor League</h1>
     <nav>
       <a href="index.html">Home</a>
       <a href="submit.html">Submit Pick</a>
@@ -30,13 +26,28 @@
 
   <main>
     <section>
-      <h2>Current Rankings</h2>
-      <p>Each row is a player; each column is a week’s survivor pick(s) for their buy-ins.</p>
+      <h2>My Standings</h2>
+      <p>
+        This table shows your entries and which team you picked each week.
+        One row per entry, columns for Weeks 1–18. Cells will be colored
+        green for correct picks, red for incorrect picks, and gray for
+        picks that haven't been graded yet.
+      </p>
     </section>
 
-    <section>
-      <!-- Paste the Google Sheets Rankings embed iframe here -->
-<iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQhcvxro2V_tSROruD9dlrXCD3eflzq6jjrHynDw1o8ASAiPfEVcIBtYUcamEdK1S4q9mnOYSZ0dwkR/pubhtml?gid=382174186&amp;single=true&amp;widget=true&amp;headers=false"></iframe>    </section>
+    <!-- Main standings area -->
+    <section id="standings-section">
+      <div id="standings-message" class="message"></div>
+      <div id="standings-table-wrapper" class="table-wrapper"></div>
+    </section>
+
+    <!-- Shown if user is not logged in -->
+    <section id="standings-login-reminder" style="display:none; margin-top:1.5rem;">
+      <p>
+        You must be logged in to view your standings.
+        Please go back to the <a href="index.html">Home page</a> to log in or sign up.
+      </p>
+    </section>
   </main>
 
   <footer>
@@ -45,5 +56,9 @@
       document.getElementById('year').textContent = new Date().getFullYear();
     </script>
   </footer>
+
+  <!-- Supabase client + standings logic -->
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/standings.js"></script>
 </body>
 </html>
