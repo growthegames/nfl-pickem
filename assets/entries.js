@@ -46,7 +46,8 @@ function renderEntries() {
     li.style.marginBottom = "0.4rem";
 
     const labelSpan = document.createElement("span");
-    labelSpan.textContent = entry.label;
+    const ownerText = entry.owner_email ? `${entry.owner_email} – ` : "";
+    labelSpan.textContent = ownerText + entry.label;
     li.appendChild(labelSpan);
 
     if (!entry.is_active) {
@@ -114,6 +115,7 @@ async function createEntry() {
         user_id: currentUser.id,
         label,
         is_active: true,
+        owner_email: currentUser.email ?? null,
       })
       .select()
       .single();
