@@ -21,6 +21,35 @@
   </header>
 
   <main>
+    <section id="auth-section">
+  <h2>League Login</h2>
+
+  <div id="auth-logged-out">
+    <p>Log in or create an account to manage your entries and submit weekly picks.</p>
+    <form id="login-form">
+      <label for="login-email">Email</label>
+      <input type="email" id="login-email" required />
+
+      <label for="login-password">Password</label>
+      <input type="password" id="login-password" required />
+
+      <button type="submit">Log In</button>
+    </form>
+
+    <p style="margin-top:0.5rem; font-size:0.85rem;">
+      No account yet?
+      <button type="button" id="signup-button">Sign up</button>
+    </p>
+
+    <div id="auth-message" class="message"></div>
+  </div>
+
+  <div id="auth-logged-in" style="display:none;">
+    <p>Welcome, <span id="user-email"></span>!</p>
+    <button type="button" id="logout-button">Log Out</button>
+  </div>
+</section>
+
     <section>
       <h2>How It Works</h2>
       <p>Buy-in: $50. Each week you pick one NFL team to win. You can't reuse teams. Lose a week, you're out. Last player standing wins the pot.</p>
@@ -42,5 +71,7 @@
       document.getElementById('year').textContent = new Date().getFullYear();
     </script>
   </footer>
+<script src="assets/supabase-client.js"></script>
+<script src="assets/auth.js"></script>
 </body>
 </html>
