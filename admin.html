@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin – Grade Picks | NFL Survivor League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css" />
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1><span>NFL</span> Survivor League</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">My Standings</a>
+      <a href="league.html">League Standings</a>
+      <a href="admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="admin-section">
+      <h2>Admin – Grade Picks</h2>
+      <p>
+        Select a week, then mark each NFL team as a win or loss.
+        All picks for that team in that week will be updated.
+      </p>
+
+      <div id="admin-notice" class="message"></div>
+
+      <div id="admin-controls" style="margin-top:1rem; display:none;">
+        <label for="admin-week-select" style="display:block; margin-bottom:0.25rem;">
+          Week to grade (1–18)
+        </label>
+        <input
+          type="number"
+          id="admin-week-select"
+          min="1"
+          max="18"
+          style="max-width:120px;"
+          placeholder="e.g. 1"
+        />
+        <button type="button" id="admin-load-week-btn" style="margin-left:0.5rem;">
+          Load teams for this week
+        </button>
+      </div>
+
+      <div id="admin-teams-container" class="table-wrapper" style="margin-top:1rem;"></div>
+
+      <button
+        type="button"
+        id="admin-save-btn"
+        style="margin-top:1rem; display:none;"
+      >
+        Save Results for This Week
+      </button>
+    </section>
+
+    <section id="admin-unauthorized" style="display:none; margin-top:1.5rem;">
+      <p>You are not authorized to view this page.</p>
+      <p>
+        If you are the league commissioner, make sure you're logged in with the correct email
+        and contact the site owner if you still can't access this page.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> NFL Survivor League</p>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </footer>
+
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/admin.js"></script>
+</body>
+</html>
