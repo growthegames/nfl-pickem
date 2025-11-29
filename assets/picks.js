@@ -13,6 +13,7 @@ const picksSection = document.getElementById("picks-section");
 let picksUser = null;
 let userEntries = [];
 let existingPicksByEntryId = new Map();
+let activeWeek = null;
 
 const NFL_TEAMS = [
   "Arizona Cardinals",
@@ -288,6 +289,45 @@ async function handleSavePicks() {
   }
 }
 
+// Load current_week from league_settings and auto-load that week
+async function loadActiveWeekAndPicks() {
+  try {
+    const { data, error } = await supaPicks
+      .from("league_settings")
+      .select("current_week")
+      .eq("id", 1)
+      .single();
+
+    if (error) throw error;
+
+    activeWeek = data?.current_week ?? null;
+
+    if (!activeWeek || activeWeek < 1 || activeWeek > 18) {
+      setPicksMessage(
+        "League settings error: current week is not set correctly.",
+        true
+      );
+      return;
+    }
+
+    // Set the input to the active week and make it read-only
+    if (weekInput) {
+      weekInput.value = activeWeek;
+      weekInput.readOnly = true;
+    }
+
+    // Hide the manual "Load" button; we auto-load
+    if (loadWeekBtn) {
+      loadWeekBtn.style.display = "none";
+    }
+
+    await handleLoadWeek();
+  } catch (err) {
+    console.error(err);
+    setPicksMessage("Error loading current league week.", true);
+  }
+}
+
 async function initPicks() {
   const { data } = await supaPicks.auth.getUser();
   picksUser = data?.user ?? null;
@@ -300,8 +340,11 @@ async function initPicks() {
 
   if (picksSection) picksSection.style.display = "block";
   if (loginReminder) loginReminder.style.display = "none";
+
+  await loadActiveWeekAndPicks();
 }
 
+// Listeners (loadWeekBtn is hidden now but listener is harmless)
 if (loadWeekBtn) {
   loadWeekBtn.addEventListener("click", () => {
     handleLoadWeek();
