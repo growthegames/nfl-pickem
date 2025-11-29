@@ -9,6 +9,7 @@ const picksTableContainer = document.getElementById("picks-table-container");
 const savePicksBtn = document.getElementById("save-picks-btn");
 const loginReminder = document.getElementById("login-reminder");
 const picksSection = document.getElementById("picks-section");
+const currentWeekLabel = document.getElementById("current-week-label"); 
 
 let picksUser = null;
 let userEntries = [];
@@ -324,6 +325,11 @@ async function initPicks() {
   if (loginReminder) loginReminder.style.display = "none";
 
   activeWeek = computeCurrentWeek();
+
+  if (currentWeekLabel) {
+    currentWeekLabel.textContent =
+      "Now submitting picks for Week " + activeWeek + ".";
+  }
 
   if (weekInput) {
     weekInput.value = activeWeek;
