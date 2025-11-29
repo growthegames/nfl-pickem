@@ -6,6 +6,7 @@ const supaAdmin = window.supabaseClient;
 // 👇 Update this to your real commissioner email
 const ADMIN_EMAILS = [
   "wesflanagan@gmail.com",
+  "aowynn2@gmail.com"
 ];
 
 const adminSection = document.getElementById("admin-section");
