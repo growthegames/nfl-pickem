@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>League Standings | NFL Survivor League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Fonts + main styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css" />
+
+  <!-- Supabase JS (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1><span>NFL</span> Survivor League</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">My Standings</a>
+      <a href="league.html">League Standings</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>League Standings</h2>
+      <p>
+        This table shows all entries in the league and which team was picked each week.
+        One row per entry (owner email + entry label), columns for Weeks 1–18.
+        Cells are colored green for correct picks, red for incorrect picks, and gray for
+        picks that haven't been graded yet.
+      </p>
+    </section>
+
+    <section id="league-standings-section">
+      <div id="league-standings-message" class="message"></div>
+      <div id="league-standings-table-wrapper" class="table-wrapper"></div>
+    </section>
+
+    <section id="league-login-reminder" style="display:none; margin-top:1.5rem;">
+      <p>
+        You must be logged in to view league standings.
+        Please go back to the <a href="index.html">Home page</a> to log in or sign up.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> NFL Survivor League</p>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </footer>
+
+  <!-- Supabase client + league standings logic -->
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/league-standings.js"></script>
+</body>
+</html>
