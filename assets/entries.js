@@ -10,6 +10,18 @@ const addEntryBtn = document.getElementById("add-entry-btn");
 let currentUser = null;
 let currentEntries = [];
 
+// Show/hide + enable/disable the "Add Entry" button
+function updateAddEntryButtonState() {
+  if (!addEntryBtn) return;
+  const atMax = currentEntries.length >= 3;
+
+  // Disable the button
+  addEntryBtn.disabled = atMax;
+
+  // Hide it completely when maxed
+  addEntryBtn.style.display = atMax ? "none" : "inline-flex";
+}
+
 function setEntriesMessage(text, isError = false) {
   if (!entriesMessage) return;
   entriesMessage.textContent = text || "";
@@ -23,7 +35,8 @@ function renderEntries() {
 
   if (!currentEntries.length) {
     const li = document.createElement("li");
-    li.textContent = "No entries yet. Click “Add Entry” to create your first one.";
+    li.textContent =
+      "No entries yet. Click “Add Entry” to create your first one.";
     entriesList.appendChild(li);
     return;
   }
@@ -53,6 +66,7 @@ function renderEntries() {
 async function loadEntries() {
   if (!currentUser) {
     if (entriesSection) entriesSection.style.display = "none";
+    updateAddEntryButtonState();
     return;
   }
 
@@ -68,16 +82,13 @@ async function loadEntries() {
     currentEntries = data || [];
     if (entriesSection) entriesSection.style.display = "block";
 
-    // Disable button if already at 3 entries
-    if (addEntryBtn) {
-      addEntryBtn.disabled = currentEntries.length >= 3;
-    }
-
     renderEntries();
     setEntriesMessage("");
+    updateAddEntryButtonState();
   } catch (err) {
     console.error(err);
     setEntriesMessage("Error loading entries.", true);
+    updateAddEntryButtonState();
   }
 }
 
@@ -89,6 +100,7 @@ async function createEntry() {
 
   if (currentEntries.length >= 3) {
     setEntriesMessage("You already have the maximum of 3 entries.", true);
+    updateAddEntryButtonState();
     return;
   }
 
@@ -110,15 +122,13 @@ async function createEntry() {
 
     currentEntries.push(data);
     renderEntries();
-
-    if (addEntryBtn) {
-      addEntryBtn.disabled = currentEntries.length >= 3;
-    }
+    updateAddEntryButtonState();
 
     setEntriesMessage(`Created ${label}!`);
   } catch (err) {
     console.error(err);
     setEntriesMessage("Error creating entry.", true);
+    updateAddEntryButtonState();
   }
 }
 
@@ -134,11 +144,14 @@ async function initEntries() {
   // On first load, check current user
   const { data } = await supaEntries.auth.getUser();
   currentUser = data?.user ?? null;
+
   if (currentUser) {
     if (entriesSection) entriesSection.style.display = "block";
     await loadEntries();
   } else {
+    currentEntries = [];
     if (entriesSection) entriesSection.style.display = "none";
+    updateAddEntryButtonState();
   }
 
   // Subscribe to future auth changes
@@ -150,6 +163,7 @@ async function initEntries() {
     } else {
       currentEntries = [];
       if (entriesSection) entriesSection.style.display = "none";
+      updateAddEntryButtonState();
     }
   });
 }
