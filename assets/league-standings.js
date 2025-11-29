@@ -108,10 +108,14 @@ function buildLeagueTable() {
   leagueEntries.forEach((entry) => {
     const tr = document.createElement("tr");
 
-    const entryCell = document.createElement("td");
-    const ownerEmail = entry.owner_email || "Unknown";
-    entryCell.textContent = `${ownerEmail} – ${entry.label}`;
-    tr.appendChild(entryCell);
+   const entryCell = document.createElement("td");
+const ownerName =
+  entry.owner_display_name ||
+  entry.owner_email ||
+  "Player";
+entryCell.textContent = `${ownerName} – ${entry.label}`;
+tr.appendChild(entryCell);
+
 
     const weekToPick = pickMap.get(entry.id) || {};
 
