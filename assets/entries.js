@@ -28,7 +28,7 @@ function updateAddEntryButtonState() {
 function setEntriesMessage(text, isError = false) {
   if (!entriesMessage) return;
   entriesMessage.textContent = text || "";
-  entriesMessage.className = "message " + (isError ? "error" : "success";
+  entriesMessage.className = "message " + (isError ? "error" : "success");
 }
 
 function renderEntries() {
