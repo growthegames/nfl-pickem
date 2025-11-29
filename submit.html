@@ -2,43 +2,78 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Submit Weekly Pick | NFL Survivor League</title>
+  <title>Submit Pick | NFL Survivor League</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/styles.css">
 
-  <style>
-    iframe {
-      width: 100%;
-      min-height: 800px;
-      border: none;
-      background: #fff;
-    }
-  </style>
+  <!-- Fonts + main styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css" />
+
+  <!-- Supabase JS (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>NFL Survivor League</h1>
-<nav>
-  <a href="index.html">Home</a>
-  <a href="submit.html">Submit Pick</a>
-  <a href="standings.html">My Standings</a>
-  <a href="league.html">League Standings</a>
-</nav>
-
+    <h1><span>NFL</span> Survivor League</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">My Standings</a>
+      <a href="league.html">League Standings</a>
+    </nav>
   </header>
 
   <main>
-    <section>
-      <h2>Submit Your Weekly Pick</h2>
-      <p>Fill this form once per active buy-in each week.</p>
+    <!-- Main picks section (shown when logged in) -->
+    <section id="picks-section">
+      <h2>Submit Your Picks</h2>
+      <p>
+        Choose a week, load your entries, and submit your Survivor pick and
+        highest scoring team for each active entry.
+      </p>
+
+      <!-- Week selector -->
+      <div style="margin-bottom: 1rem;">
+        <label for="week-input" style="display:block; margin-bottom:0.25rem;">
+          Week number (1–18)
+        </label>
+        <input
+          type="number"
+          id="week-input"
+          min="1"
+          max="18"
+          placeholder="e.g. 1"
+          style="max-width:120px;"
+        />
+        <button type="button" id="load-week-btn" style="margin-left:0.5rem;">
+          Load entries for this week
+        </button>
+      </div>
+
+      <!-- Messages -->
+      <div id="picks-message" class="message"></div>
+
+      <!-- Table wrapper where picks.js will render the table -->
+      <div id="picks-table-container" class="table-wrapper" style="margin-top:1rem;"></div>
+
+      <!-- Save button (hidden until we have entries to save) -->
+      <button
+        type="button"
+        id="save-picks-btn"
+        style="margin-top:1rem; display:none;"
+      >
+        Save Picks
+      </button>
     </section>
 
-    <section>
-      <!-- Paste the Google Form iframe here -->
-    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdyyRJeK7eAWpzVEFE2Zm3yskrs5Slyx_5NwjJUmgsO-NXQtg/viewform?embedded=true" width="640" height="4308" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+    <!-- Shown when user is not logged in -->
+    <section id="login-reminder" style="display:none; margin-top:1.5rem;">
+      <p>
+        You must be logged in to submit picks.
+        Please go back to the <a href="index.html">Home page</a> to log in or sign up.
+      </p>
     </section>
   </main>
 
@@ -48,8 +83,9 @@
       document.getElementById('year').textContent = new Date().getFullYear();
     </script>
   </footer>
-  <script src="assets/supabase-client.js"></script>
-<script src="assets/picks.js"></script>
 
+  <!-- Supabase client + picks logic -->
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/picks.js"></script>
 </body>
 </html>
