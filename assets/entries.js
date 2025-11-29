@@ -6,9 +6,12 @@ const entriesSection = document.getElementById("entries-section");
 const entriesList = document.getElementById("entries-list");
 const entriesMessage = document.getElementById("entries-message");
 const addEntryBtn = document.getElementById("add-entry-btn");
+const displayNameInput = document.getElementById("display-name-input");
+const saveDisplayNameBtn = document.getElementById("save-display-name-btn");
 
 let currentUser = null;
 let currentEntries = [];
+let currentDisplayName = "";
 
 // Show/hide + enable/disable the "Add Entry" button
 function updateAddEntryButtonState() {
@@ -25,7 +28,7 @@ function updateAddEntryButtonState() {
 function setEntriesMessage(text, isError = false) {
   if (!entriesMessage) return;
   entriesMessage.textContent = text || "";
-  entriesMessage.className = "message " + (isError ? "error" : "success");
+  entriesMessage.className = "message " + (isError ? "error" : "success";
 }
 
 function renderEntries() {
@@ -46,8 +49,11 @@ function renderEntries() {
     li.style.marginBottom = "0.4rem";
 
     const labelSpan = document.createElement("span");
-    const ownerText = entry.owner_email ? `${entry.owner_email} – ` : "";
-    labelSpan.textContent = ownerText + entry.label;
+    const namePart =
+      entry.owner_display_name ||
+      entry.owner_email ||
+      "Unnamed player";
+    labelSpan.textContent = `${namePart} – ${entry.label}`;
     li.appendChild(labelSpan);
 
     if (!entry.is_active) {
@@ -83,6 +89,15 @@ async function loadEntries() {
     currentEntries = data || [];
     if (entriesSection) entriesSection.style.display = "block";
 
+    // If we have a display name on any entry, prefer that in the input
+    const existingName =
+      currentEntries.find((e) => e.owner_display_name)?.owner_display_name ||
+      "";
+    currentDisplayName = existingName;
+    if (displayNameInput) {
+      displayNameInput.value = currentDisplayName;
+    }
+
     renderEntries();
     setEntriesMessage("");
     updateAddEntryButtonState();
@@ -116,6 +131,7 @@ async function createEntry() {
         label,
         is_active: true,
         owner_email: currentUser.email ?? null,
+        owner_display_name: currentDisplayName || null,
       })
       .select()
       .single();
@@ -134,10 +150,57 @@ async function createEntry() {
   }
 }
 
-// Hook up button
+async function saveDisplayName() {
+  if (!currentUser) {
+    setEntriesMessage("You must be logged in to set a display name.", true);
+    return;
+  }
+
+  if (!displayNameInput) return;
+
+  const newName = displayNameInput.value.trim();
+  currentDisplayName = newName;
+
+  try {
+    if (!currentEntries.length) {
+      // No entries yet; we'll just keep the name in memory for when they create entries
+      setEntriesMessage("Display name saved. Create an entry to see it applied.");
+      return;
+    }
+
+    const entryIds = currentEntries.map((e) => e.id);
+
+    const { error } = await supaEntries
+      .from("entries")
+      .update({ owner_display_name: newName || null })
+      .in("id", entryIds);
+
+    if (error) throw error;
+
+    // Update local copies
+    currentEntries = currentEntries.map((e) => ({
+      ...e,
+      owner_display_name: newName || null,
+    }));
+
+    renderEntries();
+    setEntriesMessage("Display name updated for your entries.");
+  } catch (err) {
+    console.error(err);
+    setEntriesMessage("Error updating display name.", true);
+  }
+}
+
+// Hook up buttons
 if (addEntryBtn) {
   addEntryBtn.addEventListener("click", () => {
     createEntry();
+  });
+}
+
+if (saveDisplayNameBtn) {
+  saveDisplayNameBtn.addEventListener("click", () => {
+    saveDisplayName();
   });
 }
 
