@@ -55,12 +55,32 @@
   <h2>My Entries</h2>
   <p>You can create up to three entries (buy-ins) for this season.</p>
 
+  <!-- Display name settings -->
+  <div id="display-name-settings" style="margin-bottom:1rem;">
+    <label for="display-name-input" style="display:block; margin-bottom:0.25rem;">
+      Display name for standings
+    </label>
+    <input
+      type="text"
+      id="display-name-input"
+      placeholder="e.g. Alex W, Team Wynn, etc."
+      style="max-width:260px;"
+    />
+    <button type="button" id="save-display-name-btn" style="margin-left:0.5rem;">
+      Save
+    </button>
+    <p style="font-size:0.8rem; margin-top:0.25rem; color:#94a3b8;">
+      This name will appear on league standings instead of your email.
+    </p>
+  </div>
+
   <div id="entries-message" class="message"></div>
 
   <button id="add-entry-btn">Add Entry</button>
 
   <ul id="entries-list" style="margin-top:1rem; list-style:none; padding-left:0;"></ul>
 </section>
+
 
     <section>
       <h2>How It Works</h2>
