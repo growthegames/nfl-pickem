@@ -308,6 +308,23 @@ iframe {
   border-radius: 8px;
   box-shadow: 0 18px 35px rgba(0, 0, 0, 0.8);
 }
+/* Color-coded picks in standings */
+td.pick-win {
+  background: #16a34a; /* green */
+  color: #f9fafb;
+  font-weight: 600;
+}
+
+td.pick-loss {
+  background: #dc2626; /* red */
+  color: #f9fafb;
+  font-weight: 600;
+}
+
+td.pick-pending {
+  background: rgba(148, 163, 184, 0.15); /* subtle gray */
+  color: #e5e7eb;
+}
 
 /* ===== Footer ===== */
 
