@@ -28,11 +28,16 @@
   <main>
     <!-- Main picks section (shown when logged in) -->
     <section id="picks-section">
-      <h2>Submit Your Picks</h2>
-      <p>
-        Choose a week, load your entries, and submit your Survivor pick and
-        highest scoring team for each active entry.
-      </p>
+  <h2>Submit Your Picks</h2>
+
+  <!-- This will be filled by picks.js with "Now submitting picks for Week X" -->
+  <p id="current-week-label" style="font-weight:600; margin-bottom:0.5rem;"></p>
+
+  <p>
+    Choose your Survivor pick and highest scoring team for your active entries.
+    Picks are always for the current NFL week.
+  </p>
+
 
       <!-- Week selector -->
       <div style="margin-bottom: 1rem;">
