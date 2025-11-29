@@ -3,10 +3,10 @@
 // Reuse the global supabase client
 const supaAdmin = window.supabaseClient;
 
-// 👇 Update this to your real commissioner email
+// 👇 Update this to your real commissioner emails (same as in the RLS policy)
 const ADMIN_EMAILS = [
   "wesflanagan@gmail.com",
-  "aowynn2@gmail.com"
+  "aowynn2@gmail.com",
 ];
 
 const adminSection = document.getElementById("admin-section");
@@ -21,7 +21,8 @@ const adminControls = document.getElementById("admin-controls");
 
 // We’ll store the current set of teams for the loaded week in memory
 let currentWeek = null;
-let teamRows = []; // { team, currentResult, rowEl }
+// teamRows: { team, currentResult, count, rowEl, selectEl }
+let teamRows = [];
 
 function setAdminNotice(text, isError = false) {
   if (!adminNotice) return;
@@ -35,12 +36,16 @@ function isAdminEmail(email) {
 }
 
 // Build a row for a single team with win/loss controls
-function createTeamRow(team, currentResult) {
+function createTeamRow(team, currentResult, count) {
   const tr = document.createElement("tr");
 
   const teamCell = document.createElement("td");
   teamCell.textContent = team;
   tr.appendChild(teamCell);
+
+  const countCell = document.createElement("td");
+  countCell.textContent = String(count);
+  tr.appendChild(countCell);
 
   const statusCell = document.createElement("td");
   const select = document.createElement("select");
@@ -65,7 +70,7 @@ function createTeamRow(team, currentResult) {
   statusCell.appendChild(select);
   tr.appendChild(statusCell);
 
-  return { team, currentResult, rowEl: tr, selectEl: select };
+  return { team, currentResult, count, rowEl: tr, selectEl: select };
 }
 
 // Load distinct teams and their current result for a given week
@@ -74,7 +79,7 @@ async function loadWeekTeams(week) {
   saveBtn.style.display = "none";
   teamRows = [];
 
-  // Get distinct survivor_team + result for that week
+  // Only look at rows for this week
   const { data, error } = await supaAdmin
     .from("picks")
     .select("survivor_team, result")
@@ -93,7 +98,7 @@ async function loadWeekTeams(week) {
     return;
   }
 
-  // Build a map: team -> currentResult (if mixed, leave blank)
+  // Build a map: team -> { result, count }
   const teamMap = new Map();
 
   data.forEach((row) => {
@@ -102,22 +107,26 @@ async function loadWeekTeams(week) {
     if (!team) return;
 
     if (!teamMap.has(team)) {
-      teamMap.set(team, res);
+      teamMap.set(team, { result: res, count: 1 });
     } else {
-      const existing = teamMap.get(team);
-      if (existing !== res) {
-        // Mixed results; treat as "unset" so the admin decides
-        teamMap.set(team, "");
+      const current = teamMap.get(team);
+      current.count += 1;
+
+      // If results differ across rows, treat as "unset" so admin can unify
+      if (current.result !== res) {
+        current.result = "";
       }
+
+      teamMap.set(team, current);
     }
   });
 
-  // Build table
+  // Build table with only teams that were actually picked
   const table = document.createElement("table");
   const thead = document.createElement("thead");
   const headerRow = document.createElement("tr");
 
-  ["NFL Team", "Result (this week)"].forEach((label) => {
+  ["NFL Team", "# Entries", "Result (this week)"].forEach((label) => {
     const th = document.createElement("th");
     th.textContent = label;
     headerRow.appendChild(th);
@@ -130,8 +139,9 @@ async function loadWeekTeams(week) {
 
   Array.from(teamMap.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .forEach(([team, result]) => {
-      const row = createTeamRow(team, result);
+    .forEach(([team, info]) => {
+      const { result, count } = info;
+      const row = createTeamRow(team, result, count);
       teamRows.push(row);
       tbody.appendChild(row.rowEl);
     });
@@ -157,7 +167,7 @@ async function handleLoadWeekClicked() {
   currentWeek = week;
   await loadWeekTeams(week);
   if (teamRows.length) {
-    setAdminNotice("Loaded teams for Week " + week + ".");
+    setAdminNotice("Loaded teams for Week " + week + ".", false);
   }
 }
 
@@ -209,7 +219,6 @@ async function handleSaveClicked() {
 }
 
 async function initAdmin() {
-  // Check who is logged in
   const { data } = await supaAdmin.auth.getUser();
   const user = data?.user ?? null;
 
