@@ -15,6 +15,9 @@ let userEntries = [];
 let existingPicksByEntryId = new Map();
 let activeWeek = null;
 
+// 👇 SET THIS TO YOUR ACTUAL WEEK 1 START DATE (UTC)
+const SEASON_START_UTC = Date.UTC(2025, 8, 4); // 2025-09-04 (month is 0-based: 8 = September)
+
 const NFL_TEAMS = [
   "Arizona Cardinals",
   "Atlanta Falcons",
@@ -60,14 +63,31 @@ function getFriendlyPicksErrorMessage(error) {
   if (!error || !error.message) {
     return "Error saving picks. Please try again.";
   }
-
   const msg = error.message.toLowerCase();
-
   if (msg.includes("duplicate key value") || msg.includes("unique constraint")) {
     return "It looks like this entry has already used that team earlier this season. Each entry can only use a team once.";
   }
-
   return "Error saving picks. Please try again.";
+}
+
+// 👉 Compute current week on the client, based on SEASON_START_UTC
+function computeCurrentWeek() {
+  const now = new Date();
+  const nowUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  );
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const diffDays = Math.floor((nowUtc - SEASON_START_UTC) / msPerDay);
+
+  let week = Math.floor(diffDays / 7) + 1;
+
+  if (week < 1) week = 1;
+  if (week > 18) week = 18;
+
+  return week;
 }
 
 function buildTeamSelect(name, selectedValue = "") {
@@ -289,45 +309,7 @@ async function handleSavePicks() {
   }
 }
 
-// Load current_week from league_settings and auto-load that week
-async function loadActiveWeekAndPicks() {
-  try {
-    const { data, error } = await supaPicks
-      .from("league_settings")
-      .select("current_week")
-      .eq("id", 1)
-      .single();
-
-    if (error) throw error;
-
-    activeWeek = data?.current_week ?? null;
-
-    if (!activeWeek || activeWeek < 1 || activeWeek > 18) {
-      setPicksMessage(
-        "League settings error: current week is not set correctly.",
-        true
-      );
-      return;
-    }
-
-    // Set the input to the active week and make it read-only
-    if (weekInput) {
-      weekInput.value = activeWeek;
-      weekInput.readOnly = true;
-    }
-
-    // Hide the manual "Load" button; we auto-load
-    if (loadWeekBtn) {
-      loadWeekBtn.style.display = "none";
-    }
-
-    await handleLoadWeek();
-  } catch (err) {
-    console.error(err);
-    setPicksMessage("Error loading current league week.", true);
-  }
-}
-
+// Initialize & auto-load current week
 async function initPicks() {
   const { data } = await supaPicks.auth.getUser();
   picksUser = data?.user ?? null;
@@ -341,10 +323,20 @@ async function initPicks() {
   if (picksSection) picksSection.style.display = "block";
   if (loginReminder) loginReminder.style.display = "none";
 
-  await loadActiveWeekAndPicks();
+  activeWeek = computeCurrentWeek();
+
+  if (weekInput) {
+    weekInput.value = activeWeek;
+    weekInput.readOnly = true;
+  }
+
+  if (loadWeekBtn) {
+    loadWeekBtn.style.display = "none"; // users no longer manually change weeks
+  }
+
+  await handleLoadWeek();
 }
 
-// Listeners (loadWeekBtn is hidden now but listener is harmless)
 if (loadWeekBtn) {
   loadWeekBtn.addEventListener("click", () => {
     handleLoadWeek();
