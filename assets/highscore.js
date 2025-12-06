@@ -115,11 +115,14 @@ async function loadHighScoreLeaderboard() {
 
     renderLeaderboard(stats);
     setHSMessage("");
-  } catch (err) {
+    } catch (err) {
     console.error(err);
-    setHSMessage("Error loading leaderboard. Please try again later.", true);
+    setHSMessage(
+      "Error loading leaderboard: " + (err.message || "Unknown error"),
+      true
+    );
   }
-}
+
 
 function renderLeaderboard(stats) {
   hsTableContainer.innerHTML = "";
