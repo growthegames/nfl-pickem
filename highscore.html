@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>High Score Leaderboard | NFL Survivor League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header>
+    <h1><span>NFL</span> Survivor League</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">My Standings</a>
+      <a href="league.html">League Standings</a>
+      <a href="highscore.html">High Score Leaderboard</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>Highest Scoring Team Leaderboard</h2>
+      <p>
+        This game runs all season, even if your Survivor entries are eliminated.
+        Each entry earns:
+      </p>
+      <ul>
+        <li>1 point for each week they correctly pick the highest scoring team.</li>
+        <li>Tie-breaker: total points scored by those correctly picked teams.</li>
+      </ul>
+    </section>
+
+    <section id="highscore-section">
+      <div id="highscore-message" class="message"></div>
+      <div id="highscore-table-container" class="table-wrapper" style="margin-top:1rem;"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> NFL Survivor League</p>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/highscore.js"></script>
+</body>
+</html>
