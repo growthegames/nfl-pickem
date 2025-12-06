@@ -4,8 +4,8 @@ const supaAdmin = window.supabaseClient;
 
 // 👇 Same commissioner emails you used in the RLS policies
 const ADMIN_EMAILS = [
-  "wesflanagan@gmail.com",
   "aowynn2@gmail.com",
+  "wesflanagan@gmail.com",
 ];
 
 const NFL_TEAMS = [
@@ -56,6 +56,12 @@ const adminControls = document.getElementById("admin-controls");
 const hsContainer = document.getElementById("admin-highscore-container");
 const hsTeamSelect = document.getElementById("admin-hs-team");
 const hsPointsInput = document.getElementById("admin-hs-points");
+
+// Comments UI
+const commentsControls = document.getElementById("comments-controls");
+const commentsWeekInput = document.getElementById("comments-week-input");
+const commentsLoadBtn = document.getElementById("comments-load-btn");
+const commentsContainer = document.getElementById("comments-table-container");
 
 let currentWeek = null;
 // teamRows: { team, currentResult, count, rowEl, selectEl }
@@ -215,7 +221,6 @@ async function loadHighScoreForWeek(week) {
     .maybeSingle();
 
   if (error && error.code !== "PGRST116") {
-    // PGRST116 = no rows
     console.error(error);
     setAdminNotice("Error loading high score result for this week.", true);
     return;
@@ -328,13 +333,121 @@ async function handleSaveClicked() {
   }
 }
 
+// ---------- Weekly comments viewer ----------
+
+async function loadCommentsForWeek(rawWeek) {
+  if (!commentsContainer) return;
+
+  commentsContainer.innerHTML = "";
+
+  const week = Number(rawWeek);
+  if (!week || week < 1 || week > 18) {
+    setAdminNotice(
+      "Please enter a valid week number between 1 and 18 to load comments.",
+      true
+    );
+    return;
+  }
+
+  try {
+    // Get all entries for name/label lookup
+    const { data: entries, error: entriesError } = await supaAdmin
+      .from("entries")
+      .select("id, display_name, label");
+
+    if (entriesError) throw entriesError;
+
+    const entryMap = new Map();
+    (entries || []).forEach((e) => {
+      entryMap.set(e.id, e);
+    });
+
+    // Get picks with comments for that week
+    const { data: picks, error: picksError } = await supaAdmin
+      .from("picks")
+      .select("entry_id, week, comments, created_at")
+      .eq("week", week)
+      .not("comments", "is", null)
+      .order("created_at", { ascending: true });
+
+    if (picksError) throw picksError;
+
+    const rows = (picks || []).filter(
+      (p) => p.comments && p.comments.trim() !== ""
+    );
+
+    if (!rows.length) {
+      const p = document.createElement("p");
+      p.textContent = "No comments for this week.";
+      commentsContainer.appendChild(p);
+      return;
+    }
+
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+
+    ["Entry", "Comment", "Submitted"].forEach((label) => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+
+      const info = entryMap.get(row.entry_id);
+      const displayName = info?.display_name || "Entry";
+      const label = info?.label || "";
+      const entryText = `${displayName} – ${label}`;
+
+      const entryCell = document.createElement("td");
+      entryCell.textContent = entryText;
+      tr.appendChild(entryCell);
+
+      const commentCell = document.createElement("td");
+      commentCell.textContent = row.comments;
+      tr.appendChild(commentCell);
+
+      const submittedCell = document.createElement("td");
+      if (row.created_at) {
+        const d = new Date(row.created_at);
+        submittedCell.textContent = d.toLocaleString();
+      } else {
+        submittedCell.textContent = "";
+      }
+      tr.appendChild(submittedCell);
+
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    commentsContainer.appendChild(table);
+
+    setAdminNotice(
+      "Loaded " + rows.length + " comment(s) for Week " + week + ".",
+      false
+    );
+  } catch (err) {
+    console.error(err);
+    setAdminNotice("Error loading comments for that week.", true);
+  }
+}
+
+// ---------- Init & event wiring ----------
+
 async function initAdmin() {
   const { data } = await supaAdmin.auth.getUser();
   const user = data?.user ?? null;
 
   if (!user) {
     adminSection.style.display = "none";
-    unauthorizedSection.style.display = "block";
+    if (unauthorizedSection) unauthorizedSection.style.display = "block";
     return;
   }
 
@@ -342,12 +455,12 @@ async function initAdmin() {
 
   if (!isAdminEmail(email)) {
     adminSection.style.display = "none";
-    unauthorizedSection.style.display = "block";
+    if (unauthorizedSection) unauthorizedSection.style.display = "block";
     return;
   }
 
   adminSection.style.display = "block";
-  unauthorizedSection.style.display = "none";
+  if (unauthorizedSection) unauthorizedSection.style.display = "none";
   adminControls.style.display = "block";
 
   populateHighScoreTeamSelect();
@@ -367,6 +480,14 @@ if (loadWeekBtn) {
 if (saveBtn) {
   saveBtn.addEventListener("click", () => {
     handleSaveClicked();
+  });
+}
+
+if (commentsLoadBtn) {
+  commentsLoadBtn.addEventListener("click", () => {
+    if (commentsWeekInput) {
+      loadCommentsForWeek(commentsWeekInput.value);
+    }
   });
 }
 
