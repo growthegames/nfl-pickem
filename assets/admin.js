@@ -4,8 +4,8 @@ const supaAdmin = window.supabaseClient;
 
 // 👇 Same commissioner emails you used in the RLS policies
 const ADMIN_EMAILS = [
-  "commish1@example.com",
-  "commish2@example.com",
+  "wesflanagan@gmail.com",
+  "aowynn2@gmail.com",
 ];
 
 const NFL_TEAMS = [
