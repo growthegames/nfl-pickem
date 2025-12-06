@@ -6,22 +6,19 @@ const entriesSection = document.getElementById("entries-section");
 const entriesList = document.getElementById("entries-list");
 const entriesMessage = document.getElementById("entries-message");
 const addEntryBtn = document.getElementById("add-entry-btn");
+
+// Display name controls on the home page
 const displayNameInput = document.getElementById("display-name-input");
-const saveDisplayNameBtn = document.getElementById("save-display-name-btn");
+const displayNameSaveBtn = document.getElementById("display-name-save-btn");
 
 let currentUser = null;
 let currentEntries = [];
-let currentDisplayName = "";
 
-// Show/hide + enable/disable the "Add Entry" button
 function updateAddEntryButtonState() {
   if (!addEntryBtn) return;
   const atMax = currentEntries.length >= 3;
 
-  // Disable the button
   addEntryBtn.disabled = atMax;
-
-  // Hide it completely when maxed
   addEntryBtn.style.display = atMax ? "none" : "inline-flex";
 }
 
@@ -49,11 +46,9 @@ function renderEntries() {
     li.style.marginBottom = "0.4rem";
 
     const labelSpan = document.createElement("span");
-    const namePart =
-      entry.owner_display_name ||
-      entry.owner_email ||
-      "Unnamed player";
-    labelSpan.textContent = `${namePart} – ${entry.label}`;
+    const displayName = entry.display_name || "Entry";
+    const label = entry.label || "";
+    labelSpan.textContent = `${displayName} – ${label}`;
     li.appendChild(labelSpan);
 
     if (!entry.is_active) {
@@ -73,7 +68,6 @@ function renderEntries() {
 async function loadEntries() {
   if (!currentUser) {
     if (entriesSection) entriesSection.style.display = "none";
-    updateAddEntryButtonState();
     return;
   }
 
@@ -87,24 +81,23 @@ async function loadEntries() {
     if (error) throw error;
 
     currentEntries = data || [];
+
     if (entriesSection) entriesSection.style.display = "block";
 
-    // If we have a display name on any entry, prefer that in the input
-    const existingName =
-      currentEntries.find((e) => e.owner_display_name)?.owner_display_name ||
-      "";
-    currentDisplayName = existingName;
-    if (displayNameInput) {
-      displayNameInput.value = currentDisplayName;
+    // Fill display-name input from the first entry, if present
+    if (displayNameInput && currentEntries.length) {
+      const existingName = currentEntries[0].display_name || "";
+      if (!displayNameInput.value) {
+        displayNameInput.value = existingName;
+      }
     }
 
+    updateAddEntryButtonState();
     renderEntries();
     setEntriesMessage("");
-    updateAddEntryButtonState();
   } catch (err) {
     console.error(err);
     setEntriesMessage("Error loading entries.", true);
-    updateAddEntryButtonState();
   }
 }
 
@@ -116,12 +109,15 @@ async function createEntry() {
 
   if (currentEntries.length >= 3) {
     setEntriesMessage("You already have the maximum of 3 entries.", true);
-    updateAddEntryButtonState();
     return;
   }
 
   const nextNumber = currentEntries.length + 1;
   const label = `Entry ${nextNumber}`;
+
+  // Use whatever display name is currently in the input (if any)
+  const displayName =
+    (displayNameInput && displayNameInput.value.trim()) || null;
 
   try {
     const { data, error } = await supaEntries
@@ -130,8 +126,7 @@ async function createEntry() {
         user_id: currentUser.id,
         label,
         is_active: true,
-        owner_email: currentUser.email ?? null,
-        owner_display_name: currentDisplayName || null,
+        display_name: displayName,
       })
       .select()
       .single();
@@ -139,52 +134,32 @@ async function createEntry() {
     if (error) throw error;
 
     currentEntries.push(data);
-    renderEntries();
     updateAddEntryButtonState();
+    renderEntries();
 
     setEntriesMessage(`Created ${label}!`);
   } catch (err) {
     console.error(err);
     setEntriesMessage("Error creating entry.", true);
-    updateAddEntryButtonState();
   }
 }
 
 async function saveDisplayName() {
-  if (!currentUser) {
-    setEntriesMessage("You must be logged in to set a display name.", true);
-    return;
-  }
+  if (!currentUser || !displayNameInput) return;
 
-  if (!displayNameInput) return;
-
-  const newName = displayNameInput.value.trim();
-  currentDisplayName = newName;
+  const name = displayNameInput.value.trim();
 
   try {
-    if (!currentEntries.length) {
-      // No entries yet; we'll just keep the name in memory for when they create entries
-      setEntriesMessage("Display name saved. Create an entry to see it applied.");
-      return;
-    }
-
-    const entryIds = currentEntries.map((e) => e.id);
-
     const { error } = await supaEntries
       .from("entries")
-      .update({ owner_display_name: newName || null })
-      .in("id", entryIds);
+      .update({ display_name: name || null })
+      .eq("user_id", currentUser.id);
 
     if (error) throw error;
 
-    // Update local copies
-    currentEntries = currentEntries.map((e) => ({
-      ...e,
-      owner_display_name: newName || null,
-    }));
-
-    renderEntries();
-    setEntriesMessage("Display name updated for your entries.");
+    // Refresh entries so the on-page text updates too
+    await loadEntries();
+    setEntriesMessage("Display name updated for all your entries.", false);
   } catch (err) {
     console.error(err);
     setEntriesMessage("Error updating display name.", true);
@@ -198,15 +173,14 @@ if (addEntryBtn) {
   });
 }
 
-if (saveDisplayNameBtn) {
-  saveDisplayNameBtn.addEventListener("click", () => {
+if (displayNameSaveBtn) {
+  displayNameSaveBtn.addEventListener("click", () => {
     saveDisplayName();
   });
 }
 
 // Listen for auth changes so we know when to load entries
 async function initEntries() {
-  // On first load, check current user
   const { data } = await supaEntries.auth.getUser();
   currentUser = data?.user ?? null;
 
@@ -214,12 +188,9 @@ async function initEntries() {
     if (entriesSection) entriesSection.style.display = "block";
     await loadEntries();
   } else {
-    currentEntries = [];
     if (entriesSection) entriesSection.style.display = "none";
-    updateAddEntryButtonState();
   }
 
-  // Subscribe to future auth changes
   supaEntries.auth.onAuthStateChange((_event, session) => {
     currentUser = session?.user ?? null;
     if (currentUser) {
@@ -228,7 +199,6 @@ async function initEntries() {
     } else {
       currentEntries = [];
       if (entriesSection) entriesSection.style.display = "none";
-      updateAddEntryButtonState();
     }
   });
 }
