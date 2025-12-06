@@ -93,6 +93,33 @@
   >
     Save Results for This Week
   </button>
+        <hr style="margin:2rem 0; border:none; border-top:1px solid rgba(255,255,255,0.1);" />
+
+  <h3>Weekly Comments (Admin Only)</h3>
+  <p style="font-size:0.9rem;">
+    View all comments that players submitted with their picks for a given week.
+    These comments are only visible to league commissioners and admins.
+  </p>
+
+  <div id="comments-controls" style="margin-top:0.5rem;">
+    <label for="comments-week-input" style="display:block; margin-bottom:0.25rem;">
+      Week to review (1–18)
+    </label>
+    <input
+      type="number"
+      id="comments-week-input"
+      min="1"
+      max="18"
+      style="max-width:120px;"
+      placeholder="e.g. 1"
+    />
+    <button type="button" id="comments-load-btn" style="margin-left:0.5rem;">
+      Load comments
+    </button>
+  </div>
+
+  <div id="comments-table-container" class="table-wrapper" style="margin-top:1rem;"></div>
+
 </section>
 
 
