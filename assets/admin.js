@@ -1,12 +1,46 @@
 // assets/admin.js
 
-// Reuse the global supabase client
 const supaAdmin = window.supabaseClient;
 
-// 👇 Update this to your real commissioner emails (same as in the RLS policy)
+// 👇 Same commissioner emails you used in the RLS policies
 const ADMIN_EMAILS = [
-  "wesflanagan@gmail.com",
-  "aowynn2@gmail.com",
+  "commish1@example.com",
+  "commish2@example.com",
+];
+
+const NFL_TEAMS = [
+  "Arizona Cardinals",
+  "Atlanta Falcons",
+  "Baltimore Ravens",
+  "Buffalo Bills",
+  "Carolina Panthers",
+  "Chicago Bears",
+  "Cincinnati Bengals",
+  "Cleveland Browns",
+  "Dallas Cowboys",
+  "Denver Broncos",
+  "Detroit Lions",
+  "Green Bay Packers",
+  "Houston Texans",
+  "Indianapolis Colts",
+  "Jacksonville Jaguars",
+  "Kansas City Chiefs",
+  "Las Vegas Raiders",
+  "Los Angeles Chargers",
+  "Los Angeles Rams",
+  "Miami Dolphins",
+  "Minnesota Vikings",
+  "New England Patriots",
+  "New Orleans Saints",
+  "New York Giants",
+  "New York Jets",
+  "Philadelphia Eagles",
+  "Pittsburgh Steelers",
+  "San Francisco 49ers",
+  "Seattle Seahawks",
+  "Tampa Bay Buccaneers",
+  "Tennessee Titans",
+  "Washington Commanders",
 ];
 
 const adminSection = document.getElementById("admin-section");
@@ -19,10 +53,15 @@ const teamsContainer = document.getElementById("admin-teams-container");
 const saveBtn = document.getElementById("admin-save-btn");
 const adminControls = document.getElementById("admin-controls");
 
-// We’ll store the current set of teams for the loaded week in memory
+const hsContainer = document.getElementById("admin-highscore-container");
+const hsTeamSelect = document.getElementById("admin-hs-team");
+const hsPointsInput = document.getElementById("admin-hs-points");
+
 let currentWeek = null;
 // teamRows: { team, currentResult, count, rowEl, selectEl }
 let teamRows = [];
+// high score result for current week
+let currentHighScore = { team: "", points: null };
 
 function setAdminNotice(text, isError = false) {
   if (!adminNotice) return;
@@ -33,6 +72,23 @@ function setAdminNotice(text, isError = false) {
 function isAdminEmail(email) {
   if (!email) return false;
   return ADMIN_EMAILS.map((e) => e.toLowerCase()).includes(email.toLowerCase());
+}
+
+function populateHighScoreTeamSelect() {
+  if (!hsTeamSelect) return;
+  hsTeamSelect.innerHTML = "";
+
+  const emptyOpt = document.createElement("option");
+  emptyOpt.value = "";
+  emptyOpt.textContent = "Select team (or leave blank)";
+  hsTeamSelect.appendChild(emptyOpt);
+
+  NFL_TEAMS.forEach((team) => {
+    const opt = document.createElement("option");
+    opt.value = team;
+    opt.textContent = team;
+    hsTeamSelect.appendChild(opt);
+  });
 }
 
 // Build a row for a single team with win/loss controls
@@ -73,13 +129,12 @@ function createTeamRow(team, currentResult, count) {
   return { team, currentResult, count, rowEl: tr, selectEl: select };
 }
 
-// Load distinct teams and their current result for a given week
+// Load distinct teams and their current survivor result for a given week
 async function loadWeekTeams(week) {
   teamsContainer.innerHTML = "";
   saveBtn.style.display = "none";
   teamRows = [];
 
-  // Only look at rows for this week
   const { data, error } = await supaAdmin
     .from("picks")
     .select("survivor_team, result")
@@ -98,7 +153,6 @@ async function loadWeekTeams(week) {
     return;
   }
 
-  // Build a map: team -> { result, count }
   const teamMap = new Map();
 
   data.forEach((row) => {
@@ -111,22 +165,18 @@ async function loadWeekTeams(week) {
     } else {
       const current = teamMap.get(team);
       current.count += 1;
-
-      // If results differ across rows, treat as "unset" so admin can unify
       if (current.result !== res) {
         current.result = "";
       }
-
       teamMap.set(team, current);
     }
   });
 
-  // Build table with only teams that were actually picked
   const table = document.createElement("table");
   const thead = document.createElement("thead");
   const headerRow = document.createElement("tr");
 
-  ["NFL Team", "# Entries", "Result (this week)"].forEach((label) => {
+  ["NFL Team", "# Entries", "Survivor Result"].forEach((label) => {
     const th = document.createElement("th");
     th.textContent = label;
     headerRow.appendChild(th);
@@ -154,6 +204,39 @@ async function loadWeekTeams(week) {
   }
 }
 
+// Load existing high-score result for this week, if any
+async function loadHighScoreForWeek(week) {
+  if (!hsContainer) return;
+
+  const { data, error } = await supaAdmin
+    .from("high_score_results")
+    .select("team, points")
+    .eq("week", week)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    // PGRST116 = no rows
+    console.error(error);
+    setAdminNotice("Error loading high score result for this week.", true);
+    return;
+  }
+
+  currentHighScore = {
+    team: data?.team || "",
+    points: data?.points ?? null,
+  };
+
+  hsContainer.style.display = "block";
+
+  if (hsTeamSelect) {
+    hsTeamSelect.value = currentHighScore.team || "";
+  }
+  if (hsPointsInput) {
+    hsPointsInput.value =
+      currentHighScore.points !== null ? String(currentHighScore.points) : "";
+  }
+}
+
 async function handleLoadWeekClicked() {
   setAdminNotice("");
   teamsContainer.innerHTML = "";
@@ -165,9 +248,14 @@ async function handleLoadWeekClicked() {
   }
 
   currentWeek = week;
-  await loadWeekTeams(week);
+
+  await Promise.all([
+    loadWeekTeams(week),
+    loadHighScoreForWeek(week),
+  ]);
+
   if (teamRows.length) {
-    setAdminNotice("Loaded teams for Week " + week + ".", false);
+    setAdminNotice("Loaded teams and high-score info for Week " + week + ".", false);
   }
 }
 
@@ -180,14 +268,13 @@ async function handleSaveClicked() {
   setAdminNotice("Saving results...", false);
 
   try {
+    // 1) Save survivor results for all teams
     for (const row of teamRows) {
       const team = row.team;
       const newVal = row.selectEl.value; // "", "WIN", "LOSS"
 
-      // If unchanged (blank and no previous result), skip
       if (newVal === "" && !row.currentResult) continue;
 
-      // If set to blank, clear result for that team/week
       if (newVal === "") {
         const { error } = await supaAdmin
           .from("picks")
@@ -199,7 +286,6 @@ async function handleSaveClicked() {
         continue;
       }
 
-      // Set WIN or LOSS for that team/week
       const { error } = await supaAdmin
         .from("picks")
         .update({ result: newVal })
@@ -209,9 +295,33 @@ async function handleSaveClicked() {
       if (error) throw error;
     }
 
+    // 2) Save highest-scoring team result
+    if (hsContainer) {
+      const hsTeam = hsTeamSelect ? hsTeamSelect.value : "";
+      const hsPointsRaw = hsPointsInput ? hsPointsInput.value : "";
+      const hsPoints = hsPointsRaw === "" ? null : Number(hsPointsRaw);
+
+      if (hsTeam || hsPoints !== null) {
+        const { error } = await supaAdmin
+          .from("high_score_results")
+          .upsert(
+            {
+              week: currentWeek,
+              team: hsTeam || null,
+              points: hsPoints,
+            },
+            { onConflict: "week" }
+          );
+
+        if (error) throw error;
+      }
+    }
+
     setAdminNotice("Results saved for Week " + currentWeek + "!", false);
-    // Reload to reflect consistent state
-    await loadWeekTeams(currentWeek);
+    await Promise.all([
+      loadWeekTeams(currentWeek),
+      loadHighScoreForWeek(currentWeek),
+    ]);
   } catch (err) {
     console.error(err);
     setAdminNotice("Error saving results. Please try again.", true);
@@ -236,13 +346,14 @@ async function initAdmin() {
     return;
   }
 
-  // Admin is allowed
   adminSection.style.display = "block";
   unauthorizedSection.style.display = "none";
   adminControls.style.display = "block";
 
+  populateHighScoreTeamSelect();
+
   setAdminNotice(
-    "Logged in as admin: " + email + ". Select a week and grade teams.",
+    "Logged in as admin: " + email + ". Select a week and grade results.",
     false
   );
 }
