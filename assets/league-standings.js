@@ -169,7 +169,7 @@ function renderLeagueTable(stats, weeks) {
 
     const entryPicks = row.picks;
 
-    weeks.forEach((week) => {
+        weeks.forEach((week) => {
       const td = document.createElement("td");
       td.classList.add("week-cell");
 
@@ -180,18 +180,21 @@ function renderLeagueTable(stats, weeks) {
       } else {
         td.textContent = pick.survivor_team || "";
 
-        // Use existing classes for coloring, if your CSS already defines these
         if (pick.result === "WIN") {
           td.classList.add("cell-win");
+          td.style.backgroundColor = "rgba(0, 128, 0, 0.2)";    // light green
         } else if (pick.result === "LOSS") {
           td.classList.add("cell-loss");
+          td.style.backgroundColor = "rgba(220, 20, 60, 0.25)"; // light red
         } else {
           td.classList.add("cell-pending");
+          td.style.backgroundColor = "rgba(255, 255, 255, 0.04)"; // subtle neutral
         }
       }
 
       tr.appendChild(td);
     });
+
 
     tbody.appendChild(tr);
   });
