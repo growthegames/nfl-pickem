@@ -608,4 +608,18 @@ if (commentsLoadBtn) {
   });
 }
 
+if (writeupsLoadBtn) {
+  writeupsLoadBtn.addEventListener("click", () => {
+    if (writeupsWeekInput) {
+      loadWriteupForWeek(writeupsWeekInput.value);
+    }
+  });
+}
+
+if (writeupsSaveBtn) {
+  writeupsSaveBtn.addEventListener("click", () => {
+    saveWriteup();
+  });
+}
+
 initAdmin();
