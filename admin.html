@@ -119,6 +119,62 @@
   </div>
 
   <div id="comments-table-container" class="table-wrapper" style="margin-top:1rem;"></div>
+  <hr style="margin:2rem 0; border:none; border-top:1px solid rgba(255,255,255,0.1);" />
+
+  <h3>Weekly Writeups (Commissioner)</h3>
+  <p style="font-size:0.9rem;">
+    Compose the weekly recap that appears on the public "Weekly Recap" page.
+    Select a week, load any existing draft, edit the text, and click save.
+  </p>
+
+  <div id="writeups-controls" style="margin-top:0.5rem;">
+    <label for="writeups-week-input" style="display:block; margin-bottom:0.25rem;">
+      Week (1–18)
+    </label>
+    <input
+      type="number"
+      id="writeups-week-input"
+      min="1"
+      max="18"
+      style="max-width:120px;"
+      placeholder="e.g. 1"
+    />
+    <button type="button" id="writeups-load-btn" style="margin-left:0.5rem;">
+      Load existing writeup
+    </button>
+  </div>
+
+  <div id="writeups-editor" style="margin-top:0.75rem;">
+    <label for="writeups-title-input" style="display:block; margin-bottom:0.25rem;">
+      Title
+    </label>
+    <input
+      type="text"
+      id="writeups-title-input"
+      placeholder="e.g. Week 5 Recap – Kicker Chaos and Overtime Madness"
+      style="width:100%; max-width:600px; padding:0.4rem;"
+    />
+
+    <label for="writeups-content-input" style="display:block; margin:0.75rem 0 0.25rem;">
+      Writeup
+    </label>
+    <textarea
+      id="writeups-content-input"
+      rows="10"
+      style="width:100%; max-width:800px; padding:0.5rem; font-family:inherit;"
+      placeholder="Type your recap here – thoughts on big games, upsets, survivor drama, etc."
+    ></textarea>
+
+    <div id="writeups-status" class="message" style="margin-top:0.5rem;"></div>
+
+    <button
+      type="button"
+      id="writeups-save-btn"
+      style="margin-top:0.5rem;"
+    >
+      Save Writeup
+    </button>
+  </div>
 
 </section>
 
