@@ -9,12 +9,21 @@ const picksTableContainer = document.getElementById("picks-table-container");
 const savePicksBtn = document.getElementById("save-picks-btn");
 const loginReminder = document.getElementById("login-reminder");
 const picksSection = document.getElementById("picks-section");
-const currentWeekLabel = document.getElementById("current-week-label"); 
+const currentWeekLabel = document.getElementById("current-week-label");
+
+// Deadline banner elements
+const deadlineBanner = document.getElementById("deadline-banner");
+const deadlineText = document.getElementById("deadline-text");
+const deadlineCountdown = document.getElementById("deadline-countdown");
 
 let picksUser = null;
 let userEntries = [];
 let existingPicksByEntryId = new Map();
 let activeWeek = null;
+
+// Deadline countdown state
+let currentDeadline = null;   // JS Date object
+let countdownInterval = null; // setInterval handle
 
 // 👇 SET THIS TO YOUR ACTUAL WEEK 1 START DATE (UTC)
 const SEASON_START_UTC = Date.UTC(2025, 8, 4); // 2025-09-04 (month is 0-based: 8 = September)
@@ -65,9 +74,15 @@ function getFriendlyPicksErrorMessage(error) {
     return "Error saving picks. Please try again.";
   }
   const msg = error.message.toLowerCase();
+
   if (msg.includes("duplicate key value") || msg.includes("unique constraint")) {
     return "It looks like this entry has already used that team earlier this season. Each entry can only use a team once.";
   }
+
+  if (msg.includes("submission deadline for week")) {
+    return "Picks for this week are closed. The 7:30pm ET deadline has passed.";
+  }
+
   return "Error saving picks. Please try again.";
 }
 
@@ -110,6 +125,117 @@ function buildTeamSelect(name, selectedValue = "") {
 
   return select;
 }
+
+// ---------- Deadline banner + countdown ----------
+
+function clearDeadlineBanner() {
+  currentDeadline = null;
+
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+
+  if (deadlineText) deadlineText.textContent = "";
+  if (deadlineCountdown) deadlineCountdown.textContent = "";
+  if (deadlineBanner) deadlineBanner.style.display = "none";
+}
+
+function startCountdown() {
+  if (!currentDeadline || !deadlineCountdown) return;
+
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+  }
+
+  function tick() {
+    const now = new Date();
+    const diffMs = currentDeadline.getTime() - now.getTime();
+
+    if (diffMs <= 0) {
+      deadlineCountdown.textContent =
+        "Deadline has passed for this week. Picks are closed.";
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+      return;
+    }
+
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const days = Math.floor(totalSeconds / (24 * 3600));
+    const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(days + "d");
+    parts.push(
+      String(hours).padStart(2, "0") + "h",
+      String(minutes).padStart(2, "0") + "m",
+      String(seconds).padStart(2, "0") + "s"
+    );
+
+    deadlineCountdown.textContent = "Time remaining: " + parts.join(" ");
+  }
+
+  tick(); // initial render
+  countdownInterval = setInterval(tick, 1000);
+}
+
+async function loadDeadlineForWeek(week) {
+  if (!deadlineBanner || !deadlineText || !deadlineCountdown) return;
+
+  if (!week || week < 1 || week > 18) {
+    clearDeadlineBanner();
+    return;
+  }
+
+  try {
+    const { data, error } = await supaPicks
+      .from("week_deadlines")
+      .select("deadline")
+      .eq("week", week)
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") {
+      console.error(error);
+      clearDeadlineBanner();
+      return;
+    }
+
+    if (!data || !data.deadline) {
+      // No configured deadline for this week
+      clearDeadlineBanner();
+      return;
+    }
+
+    const dl = new Date(data.deadline);
+    currentDeadline = dl;
+
+    const options = {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "America/New_York",
+      timeZoneName: "short",
+    };
+
+    const formatted = dl.toLocaleString("en-US", options);
+
+    deadlineBanner.style.display = "block";
+    deadlineText.textContent =
+      "Week " + week + " picks close at " + formatted + ".";
+
+    startCountdown();
+  } catch (err) {
+    console.error(err);
+    clearDeadlineBanner();
+  }
+}
+
+// ---------- Picks table rendering & data ----------
 
 function renderPicksTable(week) {
   picksTableContainer.innerHTML = "";
@@ -221,6 +347,7 @@ async function handleLoadWeek() {
   const week = Number(weekInput.value);
   if (!week || week < 1 || week > 18) {
     setPicksMessage("Please enter a valid week number between 1 and 18.", true);
+    clearDeadlineBanner();
     return;
   }
 
@@ -243,6 +370,9 @@ async function handleLoadWeek() {
       highScoreSelect.value = existing.highest_scoring_team || "";
     if (commentsInput) commentsInput.value = existing.comments || "";
   });
+
+  // Load the deadline + start countdown for this week
+  await loadDeadlineForWeek(week);
 
   setPicksMessage("Entries loaded for Week " + week + ".");
 }
