@@ -8,8 +8,6 @@ const leagueMessage = document.getElementById("league-standings-message");
 const leagueTableWrapper = document.getElementById("league-standings-table-wrapper");
 
 let leagueUser = null;
-let leagueEntries = [];
-let leaguePicks = [];
 
 function setLeagueMessage(text, isError = false) {
   if (!leagueMessage) return;
@@ -20,83 +18,133 @@ function setLeagueMessage(text, isError = false) {
 async function loadLeagueUser() {
   const { data } = await supaLeague.auth.getUser();
   leagueUser = data?.user ?? null;
-}
 
-async function loadAllEntries() {
-  const { data, error } = await supaLeague
-    .from("entries")
-    .select("*")
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    console.error(error);
-    throw new Error("Error loading entries");
-  }
-
-  leagueEntries = data || [];
-}
-
-async function loadAllPicks() {
-  if (!leagueEntries.length) {
-    leaguePicks = [];
+  if (!leagueUser) {
+    if (leagueSection) leagueSection.style.display = "none";
+    if (leagueLoginReminder) leagueLoginReminder.style.display = "block";
     return;
   }
 
-  const entryIds = leagueEntries.map((e) => e.id);
+  if (leagueSection) leagueSection.style.display = "block";
+  if (leagueLoginReminder) leagueLoginReminder.style.display = "none";
 
-  const { data, error } = await supaLeague
-    .from("picks")
-    .select("*")
-    .in("entry_id", entryIds);
-
-  if (error) {
-    console.error(error);
-    throw new Error("Error loading picks");
-  }
-
-  leaguePicks = data || [];
+  await loadLeagueStandings();
 }
 
-function buildLeagueTable() {
+async function loadLeagueStandings() {
+  setLeagueMessage("Loading league standings...");
+
+  try {
+    // 1) Load all entries
+    const { data: entries, error: entriesError } = await supaLeague
+      .from("entries")
+      .select("id, label, display_name, is_active, created_at")
+      .order("created_at", { ascending: true });
+
+    if (entriesError) throw entriesError;
+
+    if (!entries || !entries.length) {
+      setLeagueMessage("No entries found yet.", false);
+      return;
+    }
+
+    // 2) Load all picks
+    const { data: picks, error: picksError } = await supaLeague
+      .from("picks")
+      .select("entry_id, week, survivor_team, result");
+
+    if (picksError) throw picksError;
+
+    const allPicks = picks || [];
+
+    // Determine the max week used (fallback to 18)
+    let maxWeek = 0;
+    allPicks.forEach((p) => {
+      if (p.week && p.week > maxWeek) maxWeek = p.week;
+    });
+    if (!maxWeek) maxWeek = 18;
+
+    const weeks = [];
+    for (let w = 1; w <= maxWeek; w++) weeks.push(w);
+
+    // Build lookup: entryId -> { week -> pick }
+    const picksByEntry = new Map();
+    allPicks.forEach((p) => {
+      if (!p.entry_id || !p.week) return;
+      if (!picksByEntry.has(p.entry_id)) {
+        picksByEntry.set(p.entry_id, new Map());
+      }
+      picksByEntry.get(p.entry_id).set(p.week, p);
+    });
+
+    // 3) Build stats, including active vs eliminated flag
+    const stats = entries.map((entry) => {
+      const entryPicks = picksByEntry.get(entry.id) || new Map();
+
+      // Treat explicit false as eliminated; anything else is active
+      const isActive = entry.is_active === false ? false : true;
+
+      return {
+        id: entry.id,
+        label: entry.label || "",
+        displayName: entry.display_name || "",
+        isActive,
+        picks: entryPicks,
+      };
+    });
+
+    // 4) Sort:
+    //    - Active entries (isActive = true) first
+    //    - Then eliminated entries (isActive = false)
+    //    - Within each group, sort by displayName then label
+    stats.sort((a, b) => {
+      if (a.isActive !== b.isActive) {
+        return a.isActive ? -1 : 1; // active first
+      }
+      const nameA = (a.displayName || "").toLowerCase();
+      const nameB = (b.displayName || "").toLowerCase();
+      if (nameA !== nameB) {
+        return nameA.localeCompare(nameB);
+      }
+      const labelA = (a.label || "").toLowerCase();
+      const labelB = (b.label || "").toLowerCase();
+      return labelA.localeCompare(labelB);
+    });
+
+    renderLeagueTable(stats, weeks);
+    setLeagueMessage("");
+  } catch (err) {
+    console.error(err);
+    setLeagueMessage(
+      "Error loading league standings: " + (err.message || "Unknown error"),
+      true
+    );
+  }
+}
+
+function renderLeagueTable(stats, weeks) {
   leagueTableWrapper.innerHTML = "";
 
-  if (!leagueEntries.length) {
+  if (!stats.length) {
     const p = document.createElement("p");
-    p.textContent = "No entries have been created yet.";
+    p.textContent = "No league standings to display.";
     leagueTableWrapper.appendChild(p);
     return;
   }
 
-  const weeks = Array.from({ length: 18 }, (_, i) => i + 1);
-
-  // Map: entry_id -> { [weekNumber]: { team, result } }
-  const pickMap = new Map();
-  leagueEntries.forEach((entry) => {
-    pickMap.set(entry.id, {});
-  });
-
-  leaguePicks.forEach((pick) => {
-    const tableForEntry = pickMap.get(pick.entry_id);
-    if (tableForEntry) {
-      tableForEntry[pick.week] = {
-        team: pick.survivor_team || "",
-        result: pick.result || null,
-      };
-    }
-  });
-
   const table = document.createElement("table");
-
   const thead = document.createElement("thead");
   const headerRow = document.createElement("tr");
 
-  const entryHeader = document.createElement("th");
-  entryHeader.textContent = "Entry (Owner – Label)";
-  headerRow.appendChild(entryHeader);
+  // First column header
+  const thEntry = document.createElement("th");
+  thEntry.textContent = "Entry";
+  headerRow.appendChild(thEntry);
 
-  weeks.forEach((week) => {
+  // Week headers
+  weeks.forEach((w) => {
     const th = document.createElement("th");
-    th.textContent = `Week ${week}`;
+    th.textContent = "W" + w;
     headerRow.appendChild(th);
   });
 
@@ -105,38 +153,41 @@ function buildLeagueTable() {
 
   const tbody = document.createElement("tbody");
 
-  leagueEntries.forEach((entry) => {
+  stats.forEach((row) => {
     const tr = document.createElement("tr");
 
-   const entryCell = document.createElement("td");
-const ownerName =
-  entry.owner_display_name ||
-  entry.owner_email ||
-  "Player";
-entryCell.textContent = `${ownerName} – ${entry.label}`;
-tr.appendChild(entryCell);
+    // Optional class for eliminated rows (for CSS styling)
+    if (!row.isActive) {
+      tr.classList.add("eliminated-row");
+    }
 
+    const entryCell = document.createElement("td");
+    const name = row.displayName || "Entry";
+    const label = row.label || "";
+    entryCell.textContent = `${name} – ${label}`;
+    tr.appendChild(entryCell);
 
-    const weekToPick = pickMap.get(entry.id) || {};
+    const entryPicks = row.picks;
 
     weeks.forEach((week) => {
       const td = document.createElement("td");
-      const cellData = weekToPick[week] || {};
-      const team = cellData.team || "";
-      const result = cellData.result;
+      td.classList.add("week-cell");
 
-      if (team) {
-        td.textContent = team;
+      const pick = entryPicks.get(week);
 
-        if (result === "WIN") {
-          td.classList.add("pick-win");
-        } else if (result === "LOSS") {
-          td.classList.add("pick-loss");
-        } else {
-          td.classList.add("pick-pending");
-        }
-      } else {
+      if (!pick) {
         td.textContent = "";
+      } else {
+        td.textContent = pick.survivor_team || "";
+
+        // Use existing classes for coloring, if your CSS already defines these
+        if (pick.result === "WIN") {
+          td.classList.add("cell-win");
+        } else if (pick.result === "LOSS") {
+          td.classList.add("cell-loss");
+        } else {
+          td.classList.add("cell-pending");
+        }
       }
 
       tr.appendChild(td);
@@ -149,28 +200,5 @@ tr.appendChild(entryCell);
   leagueTableWrapper.appendChild(table);
 }
 
-async function initLeagueStandings() {
-  await loadLeagueUser();
-
-  if (!leagueUser) {
-    if (leagueSection) leagueSection.style.display = "none";
-    if (leagueLoginReminder) leagueLoginReminder.style.display = "block";
-    return;
-  }
-
-  if (leagueSection) leagueSection.style.display = "block";
-  if (leagueLoginReminder) leagueLoginReminder.style.display = "none";
-
-  try {
-    setLeagueMessage("Loading league standings...");
-    await loadAllEntries();
-    await loadAllPicks();
-    buildLeagueTable();
-    setLeagueMessage("");
-  } catch (err) {
-    console.error(err);
-    setLeagueMessage("Error loading league standings.", true);
-  }
-}
-
-initLeagueStandings();
+// Initialize
+loadLeagueUser();
