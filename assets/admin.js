@@ -3,7 +3,7 @@
 const supaAdmin = window.supabaseClient;
 
 // 👇 Same commissioner emails you used in the RLS policies
-const ADMIN_EMAILS = [
+const ADMIN_EMAILS_ADMIN_ADMIN = [
   "wesflanagan@gmail.com",
   "aowynn2@gmail.com",
 ];
@@ -87,7 +87,7 @@ function setAdminNotice(text, isError = false) {
 
 function isAdminEmail(email) {
   if (!email) return false;
-  return ADMIN_EMAILS.map((e) => e.toLowerCase()).includes(email.toLowerCase());
+  return ADMIN_EMAILS_ADMIN.map((e) => e.toLowerCase()).includes(email.toLowerCase());
 }
 
 function populateHighScoreTeamSelect() {
