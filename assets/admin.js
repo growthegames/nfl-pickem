@@ -3,7 +3,7 @@
 const supaAdmin = window.supabaseClient;
 
 // 👇 Same commissioner emails you used in the RLS policies
-const ADMIN_EMAILS_ADMIN_ADMIN = [
+const ADMIN_EMAILS_ADMIN = [
   "wesflanagan@gmail.com",
   "aowynn2@gmail.com",
 ];
