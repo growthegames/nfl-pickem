@@ -358,6 +358,114 @@ async function loadCommentsForWeek(rawWeek) {
     return;
   }
 
+  // ---------- Weekly writeups editor ----------
+
+function setWriteupsStatus(text, isError = false) {
+  if (!writeupsStatus) return;
+  writeupsStatus.textContent = text || "";
+  writeupsStatus.className = "message " + (isError ? "error" : "success");
+}
+
+async function loadWriteupForWeek(rawWeek) {
+  if (!writeupsTitleInput || !writeupsContentInput) return;
+
+  const week = Number(rawWeek);
+  if (!week || week < 1 || week > 18) {
+    setWriteupsStatus(
+      "Please enter a valid week number between 1 and 18.",
+      true
+    );
+    return;
+  }
+
+  writeupsCurrentWeek = week;
+  setWriteupsStatus("Loading writeup for Week " + week + "...", false);
+
+  try {
+    const { data, error } = await supaAdmin
+      .from("writeups")
+      .select("week, title, content")
+      .eq("week", week)
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 = no rows
+      throw error;
+    }
+
+    if (!data) {
+      // No writeup yet – clear fields
+      writeupsTitleInput.value = "";
+      writeupsContentInput.value = "";
+      setWriteupsStatus(
+        "No writeup exists yet for Week " + week + ". Start drafting!",
+        false
+      );
+    } else {
+      writeupsTitleInput.value = data.title || "";
+      writeupsContentInput.value = data.content || "";
+      setWriteupsStatus("Loaded existing writeup for Week " + week + ".", false);
+    }
+  } catch (err) {
+    console.error(err);
+    setWriteupsStatus("Error loading writeup for that week.", true);
+  }
+}
+
+async function saveWriteup() {
+  if (!writeupsTitleInput || !writeupsContentInput || !writeupsWeekInput) return;
+
+  const week = Number(writeupsWeekInput.value);
+  const title = writeupsTitleInput.value.trim();
+  const content = writeupsContentInput.value.trim();
+
+  if (!week || week < 1 || week > 18) {
+    setWriteupsStatus(
+      "Please enter a valid week number between 1 and 18 before saving.",
+      true
+    );
+    return;
+  }
+
+  if (!title) {
+    setWriteupsStatus("Please enter a title for this writeup.", true);
+    return;
+  }
+
+  if (!content) {
+    setWriteupsStatus("Please enter some content for this writeup.", true);
+    return;
+  }
+
+  writeupsCurrentWeek = week;
+  setWriteupsStatus("Saving writeup...", false);
+
+  try {
+    const { data, error } = await supaAdmin
+      .from("writeups")
+      .upsert(
+        {
+          week,
+          title,
+          content,
+        },
+        { onConflict: "week" }
+      )
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    setWriteupsStatus(
+      "Writeup saved for Week " + data.week + ". It is now live on the Weekly Recap page.",
+      false
+    );
+  } catch (err) {
+    console.error(err);
+    setWriteupsStatus("Error saving writeup. Please try again.", true);
+  }
+}
+
   try {
     // Get all entries for name/label lookup
     const { data: entries, error: entriesError } = await supaAdmin
