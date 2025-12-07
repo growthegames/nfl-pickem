@@ -50,10 +50,13 @@ async function handleForgotPassword() {
   }
 
   try {
-    const { error } = await supa.auth.resetPasswordForEmail(email, {
-      // This must match the reset page we created
-      redirectTo: window.location.origin + "/reset-password.html",
-    });
+   const { error } = await supa.auth.resetPasswordForEmail(email, {
+  // Build a URL in the same folder as the current page
+  redirectTo:
+    window.location.origin +
+    window.location.pathname.replace(/\/[^\/]*$/, "/reset-password.html"),
+});
+
 
     if (error) throw error;
 
