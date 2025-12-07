@@ -83,6 +83,10 @@ function getFriendlyPicksErrorMessage(error) {
     return "Picks for this week are closed. The 7:30pm ET deadline has passed.";
   }
 
+  if (msg.includes("eliminated")) {
+    return "That entry has been eliminated and cannot submit survivor picks after Week 3. You can still play the Highest Scoring Team game.";
+  }
+
   return "Error saving picks. Please try again.";
 }
 
@@ -272,11 +276,27 @@ function renderPicksTable(week) {
     tr.dataset.entryId = entry.id;
 
     const entryCell = document.createElement("td");
-    entryCell.textContent = entry.label;
+    let labelText = entry.label;
+
+    // If entry is eliminated and we're past the rebuy window (Week > 3),
+    // show that clearly in the label.
+    if (entry.is_active === false && week > 3) {
+      labelText += " (ELIMINATED)";
+    }
+
+    entryCell.textContent = labelText;
     tr.appendChild(entryCell);
 
     const survivorCell = document.createElement("td");
     const survivorSelect = buildTeamSelect("survivor");
+
+    // If eliminated and Week > 3, disable survivor picks for this entry
+    if (entry.is_active === false && week > 3) {
+      survivorSelect.disabled = true;
+      survivorSelect.title =
+        "This entry has been eliminated and cannot submit survivor picks after Week 3.";
+    }
+
     survivorCell.appendChild(survivorSelect);
     tr.appendChild(survivorCell);
 
@@ -398,9 +418,9 @@ async function handleSavePicks() {
       const highScoreSelect = row.querySelector('select[name="highscore"]');
       const commentsInput = row.querySelector('input[name="comments"]');
 
-      const survivorTeam = survivorSelect.value;
-      const highScoreTeam = highScoreSelect.value;
-      const comments = commentsInput.value.trim();
+      const survivorTeam = survivorSelect ? survivorSelect.value : "";
+      const highScoreTeam = highScoreSelect ? highScoreSelect.value : "";
+      const comments = commentsInput ? commentsInput.value.trim() : "";
 
       if (!survivorTeam && !highScoreTeam && !comments) {
         continue;
@@ -412,8 +432,8 @@ async function handleSavePicks() {
         const { error } = await supaPicks
           .from("picks")
           .update({
-            survivor_team: survivorTeam,
-            highest_scoring_team: highScoreTeam,
+            survivor_team: survivorTeam || null,
+            highest_scoring_team: highScoreTeam || null,
             comments,
           })
           .eq("id", existing.id);
@@ -423,8 +443,8 @@ async function handleSavePicks() {
         const { error } = await supaPicks.from("picks").insert({
           entry_id: entryId,
           week,
-          survivor_team: survivorTeam,
-          highest_scoring_team: highScoreTeam,
+          survivor_team: survivorTeam || null,
+          highest_scoring_team: highScoreTeam || null,
           comments,
         });
 
