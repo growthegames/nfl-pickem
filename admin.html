@@ -126,7 +126,7 @@
   <div id="comments-table-container" class="table-wrapper" style="margin-top:1rem;"></div>
   <hr style="margin:2rem 0; border:none; border-top:1px solid rgba(255,255,255,0.1);" />
 
-  <h3>Weekly Writeups (Commissioner)</h3>
+    <h3>Weekly Writeups (Commissioner)</h3>
   <p style="font-size:0.9rem;">
     Compose the weekly recap that appears on the public "Weekly Recap" page.
     Select a week, load any existing draft, edit the text, and click save.
@@ -160,15 +160,14 @@
       style="width:100%; max-width:600px; padding:0.4rem;"
     />
 
-    <label for="writeups-content-input" style="display:block; margin:0.75rem 0 0.25rem;">
+    <label style="display:block; margin:0.75rem 0 0.25rem;">
       Writeup
     </label>
-    <textarea
-      id="writeups-content-input"
-      rows="10"
-      style="width:100%; max-width:800px; padding:0.5rem; font-family:inherit;"
-      placeholder="Type your recap here – thoughts on big games, upsets, survivor drama, etc."
-    ></textarea>
+    <!-- Quill editor lives here -->
+    <div
+      id="writeups-editor-quill"
+      style="max-width:800px; background:#fff; color:#000;"
+    ></div>
 
     <div id="writeups-status" class="message" style="margin-top:0.5rem;"></div>
 
@@ -180,6 +179,7 @@
       Save Writeup
     </button>
   </div>
+
 
 </section>
 
