@@ -10,6 +10,10 @@ const loggedInDiv = document.getElementById("auth-logged-in");
 const userEmailSpan = document.getElementById("user-email");
 const authMessage = document.getElementById("auth-message");
 
+// NEW: forgot password button + email input
+const forgotPasswordButton = document.getElementById("forgot-password-btn");
+const loginEmailInput = document.getElementById("login-email");
+
 function setAuthMessage(text, isError = false) {
   if (!authMessage) return;
   authMessage.textContent = text || "";
@@ -30,6 +34,40 @@ async function refreshUserState() {
   if (loggedOutDiv) loggedOutDiv.style.display = "none";
   if (loggedInDiv) loggedInDiv.style.display = "block";
   if (userEmailSpan) userEmailSpan.textContent = data.user.email || "";
+}
+
+// NEW: handle forgot password
+async function handleForgotPassword() {
+  if (!loginEmailInput) {
+    setAuthMessage("Please enter your email address.", true);
+    return;
+  }
+
+  const email = loginEmailInput.value.trim();
+  if (!email) {
+    setAuthMessage("Please enter your email address first.", true);
+    return;
+  }
+
+  try {
+    const { error } = await supa.auth.resetPasswordForEmail(email, {
+      // This must match the reset page we created
+      redirectTo: window.location.origin + "/reset-password.html",
+    });
+
+    if (error) throw error;
+
+    setAuthMessage(
+      "If an account exists for that email, a password reset link has been sent.",
+      false
+    );
+  } catch (err) {
+    console.error(err);
+    setAuthMessage(
+      "Error sending reset email. Please try again later.",
+      true
+    );
+  }
 }
 
 // Handle login
@@ -94,6 +132,13 @@ if (logoutButton) {
     await supa.auth.signOut();
     setAuthMessage("Logged out.");
     await refreshUserState();
+  });
+}
+
+// NEW: wire up "Forgot password?"
+if (forgotPasswordButton) {
+  forgotPasswordButton.addEventListener("click", () => {
+    handleForgotPassword();
   });
 }
 
