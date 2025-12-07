@@ -63,6 +63,15 @@ const commentsWeekInput = document.getElementById("comments-week-input");
 const commentsLoadBtn = document.getElementById("comments-load-btn");
 const commentsContainer = document.getElementById("comments-table-container");
 
+const writeupsWeekInput = document.getElementById("writeups-week-input");
+const writeupsLoadBtn = document.getElementById("writeups-load-btn");
+const writeupsTitleInput = document.getElementById("writeups-title-input");
+const writeupsContentInput = document.getElementById("writeups-content-input");
+const writeupsStatus = document.getElementById("writeups-status");
+const writeupsSaveBtn = document.getElementById("writeups-save-btn");
+
+let writeupsCurrentWeek = null;
+
 let currentWeek = null;
 // teamRows: { team, currentResult, count, rowEl, selectEl }
 let teamRows = [];
