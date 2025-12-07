@@ -84,12 +84,31 @@ async function loadEntries() {
 
     if (entriesSection) entriesSection.style.display = "block";
 
-    // Fill display-name input from the first entry, if present
-    if (displayNameInput && currentEntries.length) {
-      const existingName = currentEntries[0].display_name || "";
-      if (!displayNameInput.value) {
-        displayNameInput.value = existingName;
+    // Determine if display_name is already set for this user
+    let existingName = "";
+    let anyDisplayName = false;
+    if (currentEntries.length) {
+      for (const e of currentEntries) {
+        if (e.display_name) {
+          existingName = e.display_name;
+          anyDisplayName = true;
+          break;
+        }
       }
+    }
+
+    // Lock or unlock the display-name UI based on that
+    if (displayNameInput) {
+      if (existingName) displayNameInput.value = existingName;
+      // If any display_name exists, make it read-only
+      displayNameInput.readOnly = anyDisplayName;
+    }
+
+    if (displayNameSaveBtn) {
+      // Hide the save button once a name is set
+      displayNameSaveBtn.style.display = anyDisplayName
+        ? "none"
+        : "inline-flex";
     }
 
     updateAddEntryButtonState();
@@ -147,6 +166,15 @@ async function createEntry() {
 async function saveDisplayName() {
   if (!currentUser || !displayNameInput) return;
 
+  // If any entry already has a display_name, block changes
+  if (currentEntries.some((e) => e.display_name)) {
+    setEntriesMessage(
+      "Your display name is already set and cannot be changed. Contact the commissioner if this is an issue.",
+      true
+    );
+    return;
+  }
+
   const name = displayNameInput.value.trim();
 
   try {
@@ -159,7 +187,7 @@ async function saveDisplayName() {
 
     // Refresh entries so the on-page text updates too
     await loadEntries();
-    setEntriesMessage("Display name updated for all your entries.", false);
+    setEntriesMessage("Display name set for all your entries.", false);
   } catch (err) {
     console.error(err);
     setEntriesMessage("Error updating display name.", true);
