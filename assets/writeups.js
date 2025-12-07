@@ -43,19 +43,14 @@ function renderWriteups(list) {
     header.appendChild(meta);
     card.appendChild(header);
 
-    const body = document.createElement("div");
+       const body = document.createElement("div");
     body.className = "card-body";
 
-    // Simple formatting: split on blank lines into paragraphs
-    const text = item.content || "";
-    const paragraphs = text.split(/\n\s*\n/);
-    paragraphs.forEach((para) => {
-      const p = document.createElement("p");
-      p.textContent = para.trim();
-      if (p.textContent) body.appendChild(p);
-    });
+    // content is HTML from Quill – inject as-is
+    body.innerHTML = item.content || "";
 
     card.appendChild(body);
+
     writeupsContainer.appendChild(card);
   });
 }
