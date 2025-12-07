@@ -265,6 +265,10 @@ input[type="submit"]:active {
 .message.error {
   color: #f97373;
 }
+/* Hide message containers when there's no text */
+.message:empty {
+  display: none;
+}
 
 /* ===== Tables (standings page) ===== */
 
