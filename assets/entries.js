@@ -9,7 +9,37 @@ const addEntryBtn = document.getElementById("add-entry-btn");
 
 // Display name controls on the home page
 const displayNameInput = document.getElementById("display-name-input");
-const displayNameSaveBtn = document.getElementById("display-name-save-btn");
+const saveDisplayNameBtn = document.getElementById("save-display-name-btn");
+const displayNameEditRow = document.getElementById("display-name-edit-row");
+const displayNameLockedRow = document.getElementById("display-name-locked");
+const displayNameLockedValue = document.getElementById("display-name-locked-value");
+
+function showDisplayNameEditable(initialValue = "") {
+  if (!displayNameInput || !displayNameEditRow) return;
+
+  displayNameInput.value = initialValue || "";
+  displayNameInput.disabled = false;
+  displayNameInput.readOnly = false;
+
+  displayNameEditRow.style.display = "flex";
+  if (saveDisplayNameBtn) saveDisplayNameBtn.style.display = "inline-flex";
+
+  if (displayNameLockedRow) displayNameLockedRow.style.display = "none";
+  if (displayNameLockedValue) displayNameLockedValue.textContent = "";
+}
+
+function showDisplayNameLocked(name) {
+  if (!displayNameInput || !displayNameLockedRow || !displayNameLockedValue) return;
+
+  displayNameLockedValue.textContent = name || "";
+
+  // Hide the input + button entirely
+  if (displayNameEditRow) displayNameEditRow.style.display = "none";
+
+  // Show the static text row
+  displayNameLockedRow.style.display = "block";
+}
+
 
 let currentUser = null;
 let currentEntries = [];
