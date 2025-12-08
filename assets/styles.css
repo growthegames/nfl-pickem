@@ -90,6 +90,11 @@ nav a:hover {
 .nav-admin-link {
   display: none;
 }
+/* Hide the Display Name "Save" button when the input is locked */
+#display-name-input[disabled] + #save-display-name-btn,
+#display-name-input[readonly] + #save-display-name-btn {
+  display: none;
+}
 
 
 /* ===== Main content ===== */
