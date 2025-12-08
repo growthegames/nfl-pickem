@@ -14,6 +14,11 @@ const displayNameEditRow = document.getElementById("display-name-edit-row");
 const displayNameLockedRow = document.getElementById("display-name-locked");
 const displayNameLockedValue = document.getElementById("display-name-locked-value");
 
+let currentUser = null;
+let currentEntries = [];
+
+// ---- Display name UI helpers ----
+
 function showDisplayNameEditable(initialValue = "") {
   if (!displayNameInput || !displayNameEditRow) return;
 
@@ -29,7 +34,7 @@ function showDisplayNameEditable(initialValue = "") {
 }
 
 function showDisplayNameLocked(name) {
-  if (!displayNameInput || !displayNameLockedRow || !displayNameLockedValue) return;
+  if (!displayNameLockedRow || !displayNameLockedValue) return;
 
   displayNameLockedValue.textContent = name || "";
 
@@ -40,9 +45,7 @@ function showDisplayNameLocked(name) {
   displayNameLockedRow.style.display = "block";
 }
 
-
-let currentUser = null;
-let currentEntries = [];
+// ---- Entries logic ----
 
 function updateAddEntryButtonState() {
   if (!addEntryBtn) return;
@@ -114,9 +117,10 @@ async function loadEntries() {
 
     if (entriesSection) entriesSection.style.display = "block";
 
-    // Determine if display_name is already set for this user
+    // Determine if a display_name is already set for this user
     let existingName = "";
     let anyDisplayName = false;
+
     if (currentEntries.length) {
       for (const e of currentEntries) {
         if (e.display_name) {
@@ -128,17 +132,11 @@ async function loadEntries() {
     }
 
     // Lock or unlock the display-name UI based on that
-    if (displayNameInput) {
-      if (existingName) displayNameInput.value = existingName;
-      // If any display_name exists, make it read-only
-      displayNameInput.readOnly = anyDisplayName;
-    }
-
-    if (displayNameSaveBtn) {
-      // Hide the save button once a name is set
-      displayNameSaveBtn.style.display = anyDisplayName
-        ? "none"
-        : "inline-flex";
+    if (anyDisplayName && existingName) {
+      showDisplayNameLocked(existingName);
+    } else {
+      // No name yet → allow editing
+      showDisplayNameEditable(existingName);
     }
 
     updateAddEntryButtonState();
@@ -207,15 +205,21 @@ async function saveDisplayName() {
 
   const name = displayNameInput.value.trim();
 
+  if (!name) {
+    setEntriesMessage("Please enter a display name before saving.", true);
+    return;
+  }
+
   try {
+    // Update all existing entries for this user to share this display name
     const { error } = await supaEntries
       .from("entries")
-      .update({ display_name: name || null })
+      .update({ display_name: name })
       .eq("user_id", currentUser.id);
 
     if (error) throw error;
 
-    // Refresh entries so the on-page text updates too
+    // Refresh entries so the on-page text updates too (and lock the UI)
     await loadEntries();
     setEntriesMessage("Display name set for all your entries.", false);
   } catch (err) {
@@ -231,8 +235,8 @@ if (addEntryBtn) {
   });
 }
 
-if (displayNameSaveBtn) {
-  displayNameSaveBtn.addEventListener("click", () => {
+if (saveDisplayNameBtn) {
+  saveDisplayNameBtn.addEventListener("click", () => {
     saveDisplayName();
   });
 }
@@ -260,6 +264,5 @@ async function initEntries() {
     }
   });
 }
-
 
 initEntries();
