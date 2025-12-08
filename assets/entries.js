@@ -230,5 +230,16 @@ async function initEntries() {
     }
   });
 }
+  // If display name is already locked and non-empty,
+  // hide the Save button so users can't try to change it.
+  if (displayNameInput && saveDisplayNameBtn) {
+    const hasValue = displayNameInput.value.trim() !== "";
+    const isLocked =
+      displayNameInput.disabled === true || displayNameInput.readOnly === true;
+
+    if (hasValue && isLocked) {
+      saveDisplayNameBtn.style.display = "none";
+    }
+  }
 
 initEntries();
