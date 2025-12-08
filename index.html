@@ -80,10 +80,13 @@
   <p>You can create up to three entries (buy-ins) for this season.</p>
 
   <!-- Display name settings -->
-  <div id="display-name-settings" style="margin-bottom:1rem;">
-    <label for="display-name-input" style="display:block; margin-bottom:0.25rem;">
-      Display name for standings
-    </label>
+ <div id="display-name-settings" style="margin-bottom:1rem;">
+  <label for="display-name-input" style="display:block; margin-bottom:0.25rem;">
+    Display name for standings
+  </label>
+
+  <!-- Editable input + save (for first-time users or when DB is cleared) -->
+  <div id="display-name-edit-row">
     <input
       type="text"
       id="display-name-input"
@@ -93,10 +96,22 @@
     <button type="button" id="save-display-name-btn" style="margin-left:0.5rem;">
       Save
     </button>
-    <p style="font-size:0.8rem; margin-top:0.25rem; color:#94a3b8;">
-      This name will appear on league standings instead of your email.
-    </p>
   </div>
+
+  <!-- Locked view: plain text only (hidden by default) -->
+  <p
+    id="display-name-locked"
+    style="display:none; font-size:0.9rem; margin-top:0.25rem; color:#e5e7eb;"
+  >
+    Display name for standings:
+    <strong id="display-name-locked-value"></strong>
+  </p>
+
+  <p style="font-size:0.8rem; margin-top:0.25rem; color:#94a3b8;">
+    This name will appear on league standings instead of your email.
+  </p>
+</div>
+
 
   <div id="entries-message" class="message"></div>
 
