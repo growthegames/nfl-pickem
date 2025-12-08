@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Schedule | NFL Survivor League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header>
+    <h1><span>NFL</span> Survivor League</h1>
+
+    <button
+      class="nav-toggle"
+      id="nav-toggle"
+      type="button"
+      aria-label="Toggle navigation menu"
+      aria-expanded="false"
+    >
+      ☰ Menu
+    </button>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">My Standings</a>
+      <a href="league.html">League Standings</a>
+      <a href="highscore.html">High Score Leaderboard</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="writeups.html">Weekly Recap</a>
+      <a href="admin.html" class="nav-admin-link">Admin</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="schedule-section" class="card">
+      <h2>Season Schedule</h2>
+      <p style="margin-bottom:0.75rem;">
+        Browse weekly NFL matchups to help plan your survivor picks.
+        Times are shown in Eastern Time.
+      </p>
+
+      <div class="schedule-controls">
+        <label for="schedule-week-select">Week:</label>
+        <select id="schedule-week-select"></select>
+        <button type="button" id="schedule-today-btn">
+          Jump to current week
+        </button>
+      </div>
+
+      <div id="schedule-message" class="message"></div>
+
+      <div id="schedule-grid" class="schedule-grid">
+        <!-- Game cards rendered by JS -->
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> NFL Survivor League</p>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </footer>
+
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/nav.js"></script>
+  <script src="assets/schedule.js"></script>
+</body>
+</html>
