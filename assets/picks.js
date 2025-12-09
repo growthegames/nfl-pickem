@@ -25,9 +25,6 @@ let activeWeek = null;
 let currentDeadline = null;   // JS Date object
 let countdownInterval = null; // setInterval handle
 
-// 👇 SET THIS TO YOUR ACTUAL WEEK 1 START DATE (UTC)
-const SEASON_START_UTC = Date.UTC(2025, 8, 4); // 2025-09-04 (month is 0-based: 8 = September)
-
 const NFL_TEAMS = [
   "Arizona Cardinals",
   "Atlanta Falcons",
@@ -90,24 +87,47 @@ function getFriendlyPicksErrorMessage(error) {
   return "Error saving picks. Please try again.";
 }
 
-// 👉 Compute current week on the client, based on SEASON_START_UTC
-function computeCurrentWeek() {
-  const now = new Date();
-  const nowUtc = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate()
-  );
+/**
+ * Figure out which week is currently open for picks,
+ * based on the week_deadlines table in Supabase.
+ *
+ * Logic:
+ *  1) Find the earliest deadline that is still in the future → that week is "open".
+ *  2) If none are in the future, fall back to the highest week number in the table.
+ *  3) If something goes wrong, fall back to Week 1.
+ */
+async function computeCurrentWeek() {
+  try {
+    const nowIso = new Date().toISOString();
 
-  const msPerDay = 1000 * 60 * 60 * 24;
-  const diffDays = Math.floor((nowUtc - SEASON_START_UTC) / msPerDay);
+    // 1) Earliest deadline that is still in the future
+    const { data, error } = await supaPicks
+      .from("week_deadlines")
+      .select("week, deadline")
+      .gte("deadline", nowIso)
+      .order("deadline", { ascending: true })
+      .limit(1);
 
-  let week = Math.floor(diffDays / 7) + 1;
+    if (!error && data && data.length > 0) {
+      return data[0].week;
+    }
 
-  if (week < 1) week = 1;
-  if (week > 18) week = 18;
+    // 2) Fallback: most recent week in the table
+    const { data: allWeeks, error: error2 } = await supaPicks
+      .from("week_deadlines")
+      .select("week")
+      .order("week", { ascending: false })
+      .limit(1);
 
-  return week;
+    if (!error2 && allWeeks && allWeeks.length > 0) {
+      return allWeeks[0].week;
+    }
+  } catch (e) {
+    console.error("Error computing current week from deadlines:", e);
+  }
+
+  // 3) Final fallback if something goes wrong
+  return 1;
 }
 
 function buildTeamSelect(name, selectedValue = "") {
@@ -474,7 +494,8 @@ async function initPicks() {
   if (picksSection) picksSection.style.display = "block";
   if (loginReminder) loginReminder.style.display = "none";
 
-  activeWeek = computeCurrentWeek();
+  // 👇 use the DB-driven current week
+  activeWeek = await computeCurrentWeek();
 
   if (currentWeekLabel) {
     currentWeekLabel.textContent =
