@@ -53,24 +53,30 @@
       </p>
     </section>
 
-    <section id="league-standings-section">
+   <section id="league-standings-section">
   <h2>League Standings</h2>
 
-  <!-- NEW: Entries remaining callout -->
+  <!-- Entries remaining callout -->
   <p id="entries-remaining-callout" class="entries-remaining-callout"></p>
 
-  <p id="league-login-reminder">...</p>
+  <!-- NEW: Weekly breakdown UI -->
+  <section id="week-breakdown-section">
+    <h3>Weekly Pick Breakdown</h3>
+    <div class="week-breakdown-controls">
+      <label for="breakdown-week-select">Select week:</label>
+      <select id="breakdown-week-select"></select>
+    </div>
+    <p id="week-breakdown-empty" class="message" style="display:none;"></p>
+    <div class="chart-wrapper" style="max-width: 600px; margin-top: 1rem;">
+      <canvas id="week-breakdown-chart"></canvas>
+    </div>
+  </section>
+
+  <p id="league-login-reminder">You must be logged in to view standings.</p>
   <div id="league-standings-message" class="message"></div>
   <div id="league-standings-table-wrapper"></div>
 </section>
 
-
-    <section id="league-login-reminder" style="display:none; margin-top:1.5rem;">
-      <p>
-        You must be logged in to view league standings.
-        Please go back to the <a href="index.html">Home page</a> to log in or sign up.
-      </p>
-    </section>
   </main>
 
   <footer>
