@@ -87,7 +87,9 @@ function setAdminNotice(text, isError = false) {
 
 function isAdminEmail(email) {
   if (!email) return false;
-  return ADMIN_EMAILS_ADMIN.map((e) => e.toLowerCase()).includes(email.toLowerCase());
+  return ADMIN_EMAILS_ADMIN.map((e) => e.toLowerCase()).includes(
+    email.toLowerCase()
+  );
 }
 
 function populateHighScoreTeamSelect() {
@@ -107,7 +109,13 @@ function populateHighScoreTeamSelect() {
   });
 }
 
-// Build a row for a single team with win/loss controls
+/**
+ * Build a row for a single team with win/loss controls.
+ * currentResult comes from picks.result and can be:
+ *   - "WIN"
+ *   - "LOSS"
+ *   - null / "" (no result / mixed)
+ */
 function createTeamRow(team, currentResult, count) {
   const tr = document.createElement("tr");
 
@@ -123,21 +131,31 @@ function createTeamRow(team, currentResult, count) {
   const select = document.createElement("select");
   select.dataset.team = team;
 
+  // We separate "UNCHANGED" vs "CLEAR" so the admin can
+  // choose to leave DB values alone or explicitly wipe them.
   const options = [
-    { value: "", label: "Unchanged / Clear" },
+    { value: "UNCHANGED", label: "Unchanged / Mixed" },
     { value: "WIN", label: "Win" },
     { value: "LOSS", label: "Loss" },
+    { value: "CLEAR", label: "Clear result" },
   ];
 
   options.forEach((opt) => {
     const o = document.createElement("option");
     o.value = opt.value;
     o.textContent = opt.label;
-    if (opt.value === currentResult) {
-      o.selected = true;
-    }
     select.appendChild(o);
   });
+
+  // Set initial selection based on currentResult from DB
+  if (currentResult === "WIN") {
+    select.value = "WIN";
+  } else if (currentResult === "LOSS") {
+    select.value = "LOSS";
+  } else {
+    // null, empty, or mixed => default to UNCHANGED
+    select.value = "UNCHANGED";
+  }
 
   statusCell.appendChild(select);
   tr.appendChild(statusCell);
@@ -169,11 +187,12 @@ async function loadWeekTeams(week) {
     return;
   }
 
+  // Aggregate by team: count picks and deduce a "currentResult" view
   const teamMap = new Map();
 
   data.forEach((row) => {
     const team = row.survivor_team;
-    const res = row.result || "";
+    const res = row.result || null; // result is "WIN", "LOSS", or null
     if (!team) return;
 
     if (!teamMap.has(team)) {
@@ -181,9 +200,13 @@ async function loadWeekTeams(week) {
     } else {
       const current = teamMap.get(team);
       current.count += 1;
+
+      // If we see conflicting non-null results, we consider it "mixed"
+      // and treat it as no single currentResult (null) for the dropdown.
       if (current.result !== res) {
-        current.result = "";
+        current.result = null;
       }
+
       teamMap.set(team, current);
     }
   });
@@ -264,13 +287,13 @@ async function handleLoadWeekClicked() {
 
   currentWeek = week;
 
-  await Promise.all([
-    loadWeekTeams(week),
-    loadHighScoreForWeek(week),
-  ]);
+  await Promise.all([loadWeekTeams(week), loadHighScoreForWeek(week)]);
 
   if (teamRows.length) {
-    setAdminNotice("Loaded teams and high-score info for Week " + week + ".", false);
+    setAdminNotice(
+      "Loaded teams and high-score info for Week " + week + ".",
+      false
+    );
   }
 }
 
@@ -286,24 +309,24 @@ async function handleSaveClicked() {
     // 1) Save survivor results for all teams
     for (const row of teamRows) {
       const team = row.team;
-      const newVal = row.selectEl.value; // "", "WIN", "LOSS"
+      const action = row.selectEl.value; // "UNCHANGED", "WIN", "LOSS", "CLEAR"
 
-      if (newVal === "" && !row.currentResult) continue;
-
-      if (newVal === "") {
-        const { error } = await supaAdmin
-          .from("picks")
-          .update({ result: null })
-          .eq("week", currentWeek)
-          .eq("survivor_team", team);
-
-        if (error) throw error;
+      // If unchanged, do nothing to DB for this team
+      if (action === "UNCHANGED") {
         continue;
+      }
+
+      let newResult = null;
+
+      if (action === "WIN" || action === "LOSS") {
+        newResult = action;
+      } else if (action === "CLEAR") {
+        newResult = null;
       }
 
       const { error } = await supaAdmin
         .from("picks")
-        .update({ result: newVal })
+        .update({ result: newResult })
         .eq("week", currentWeek)
         .eq("survivor_team", team);
 
@@ -333,6 +356,8 @@ async function handleSaveClicked() {
     }
 
     setAdminNotice("Results saved for Week " + currentWeek + "!", false);
+
+    // Reload so the dropdowns reflect what is actually in the DB
     await Promise.all([
       loadWeekTeams(currentWeek),
       loadHighScoreForWeek(currentWeek),
@@ -495,7 +520,10 @@ async function loadWriteupForWeek(rawWeek) {
       writeupsTitleInput.value = data.title || "";
       // Paste HTML into Quill
       quillEditor.clipboard.dangerouslyPasteHTML(data.content || "");
-      setWriteupsStatus("Loaded existing writeup for Week " + week + ".", false);
+      setWriteupsStatus(
+        "Loaded existing writeup for Week " + week + ".",
+        false
+      );
     }
   } catch (err) {
     console.error(err);
@@ -632,7 +660,7 @@ if (commentsLoadBtn) {
 
 if (writeupsLoadBtn) {
   writeupsLoadBtn.addEventListener("click", () => {
-  if (writeupsWeekInput) {
+    if (writeupsWeekInput) {
       loadWriteupForWeek(writeupsWeekInput.value);
     }
   });
