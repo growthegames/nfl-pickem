@@ -325,6 +325,75 @@ tbody tr:nth-child(even) {
 .table-wrapper {
   overflow-x: auto;
 }
+/* Entries remaining chip */
+.entries-remaining-callout {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  padding: 0.3rem 0.75rem;
+  display: inline-block;
+  border-radius: 999px;
+  background: #0b162a;
+  color: #ffb612;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Header row with title + toggle */
+.breakdown-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+/* Smaller “ghost” button for collapse toggle */
+.ghost-toggle {
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: transparent;
+  color: #e5e7eb;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.ghost-toggle:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+/* Collapsible breakdown section */
+#week-breakdown-section {
+  overflow: hidden;
+  max-height: 1000px; /* fully expanded default */
+  transition: max-height 0.28s ease, opacity 0.28s ease;
+}
+
+/* Chart wrapper: keep it compact & centered */
+.chart-wrapper {
+  max-width: 420px;
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Week controls */
+.week-breakdown-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.week-breakdown-controls label {
+  font-weight: 500;
+}
+.week-breakdown-controls select {
+  font-size: 0.9rem;
+  padding: 0.15rem 0.4rem;
+}
+
 
 /* ===== Iframe containers (Form & Sheet embeds) ===== */
 
