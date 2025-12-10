@@ -175,12 +175,110 @@ li + li {
   padding: 0.3rem 0.75rem;
   display: inline-block;
   border-radius: 999px;
-  background: #0b162a;   /* dark navy-ish */
-  color: #ffb612;        /* gold accent */
-  font-size: 0.9rem;
-  letter-spacing: 0.03em;
+  background: #0b162a;
+  color: #ffb612;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* Title + collapse toggle */
+.breakdown-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+/* Small “ghost” button for collapsing the section */
+.ghost-toggle {
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: transparent;
+  color: #e5e7eb;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.ghost-toggle:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+/* Collapsible wrapper */
+#week-breakdown-section {
+  overflow: hidden;
+  max-height: 1000px;
+  transition: max-height 0.28s ease, opacity 0.28s ease;
+}
+
+/* Controls row: label + select */
+.week-breakdown-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+}
+.week-breakdown-controls select {
+  font-size: 0.9rem;
+  padding: 0.15rem 0.4rem;
+}
+
+/* Table vs chart toggle buttons */
+.breakdown-view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.toggle-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: transparent;
+  color: #e5e7eb;
+  font-size: 0.78rem;
+  padding: 0.18rem 0.7rem;
+  cursor: pointer;
+}
+.toggle-chip.active {
+  background: #0b162a;
+  color: #ffb612;
+  border-color: #ffb612;
+}
+
+/* Compact chart wrapper */
+.chart-wrapper {
+  max-width: 420px;
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Breakdown table styles */
+.breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+}
+.breakdown-table th,
+.breakdown-table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+.breakdown-table th {
+  text-align: left;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.7);
+}
+.breakdown-table td:nth-child(2),
+.breakdown-table td:nth-child(3) {
+  text-align: right;
+}
+
 
 
 /* ===== Forms (submit page) ===== */
