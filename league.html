@@ -5,114 +5,128 @@
   <title>League Standings | NFL Survivor League</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Fonts + main styles -->
+  <!-- Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
+
+  <!-- Chart.js for pie chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css" />
-
-  <!-- Supabase JS (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
+  <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
-<header>
-  <h1><span>NFL</span> Survivor League</h1>
+  <header>
+    <h1><span>NFL</span> Survivor League</h1>
 
-  <button
-    class="nav-toggle"
-    id="nav-toggle"
-    type="button"
-    aria-label="Toggle navigation menu"
-    aria-expanded="false"
-  >
-    ☰ Menu
-  </button>
+    <button
+      class="nav-toggle"
+      id="nav-toggle"
+      type="button"
+      aria-label="Toggle navigation menu"
+      aria-expanded="false"
+    >
+      ☰ Menu
+    </button>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="submit.html">Submit Pick</a>
-    <a href="standings.html">My Standings</a>
-    <a href="league.html">League Standings</a>
-    <a href="highscore.html">High Score Leaderboard</a>
-    <a href="schedule.html">Schedule</a>
-    <a href="writeups.html">Weekly Recap</a>
-    <a href="admin.html" class="nav-admin-link">Admin</a>
-  </nav>
-</header>
-
-
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="submit.html">Submit Pick</a>
+      <a href="standings.html">My Standings</a>
+      <a href="league.html">League Standings</a>
+      <a href="highscore.html">High Score Leaderboard</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="writeups.html">Weekly Recap</a>
+      <a href="admin.html" class="nav-admin-link">Admin</a>
+    </nav>
+  </header>
 
   <main>
-    <section>
+    <!-- Top explainer card -->
+    <section class="card">
       <h2>League Standings</h2>
       <p>
         This table shows all entries in the league and which team was picked each week.
-        One row per entry (owner email + entry label), columns for Weeks 1–18.
-        Cells are colored green for correct picks, red for incorrect picks, and gray for
-        picks that haven't been graded yet.
+        One row per entry (display name + entry label) with columns for Weeks 1–18.
+        Cells are green for correct picks, red for incorrect picks, and gray for picks that
+        haven’t been graded yet.
       </p>
     </section>
 
-  <section id="league-standings-section">
-  <h2>League Standings</h2>
-
-  <!-- Entries remaining callout -->
-  <p id="entries-remaining-callout" class="entries-remaining-callout"></p>
-
-  <!-- Header row with title + collapse toggle -->
-  <div class="breakdown-header-row">
-    <h3>Weekly Pick Breakdown</h3>
-    <button type="button" id="toggle-breakdown-btn" class="ghost-toggle">
-      Hide weekly breakdown
-    </button>
-  </div>
-
-  <section id="week-breakdown-section" data-collapsed="false">
-    <div class="week-breakdown-controls">
-      <label for="breakdown-week-select">Select week:</label>
-      <select id="breakdown-week-select"></select>
-    </div>
-
-    <!-- NEW: Table vs Chart toggle -->
-    <div class="breakdown-view-toggle">
-      <button
-        type="button"
-        id="breakdown-view-table-btn"
-        class="toggle-chip active"
+    <!-- Main standings + breakdown -->
+    <section id="league-standings-section" class="card">
+      <!-- Entries remaining callout -->
+      <div
+        id="entries-remaining-callout"
+        class="entries-remaining-callout"
+        style="margin-bottom: 1rem;"
       >
-        Table
-      </button>
-      <button
-        type="button"
-        id="breakdown-view-chart-btn"
-        class="toggle-chip"
+        ENTRIES REMAINING: 0 / 0
+      </div>
+
+      <!-- Weekly breakdown controls + visuals -->
+      <div id="weekly-breakdown-card" class="weekly-breakdown-card">
+        <div class="weekly-breakdown-header">
+          <h3>Weekly Pick Breakdown</h3>
+          <button
+            type="button"
+            id="weekly-breakdown-toggle"
+            class="btn-secondary"
+          >
+            HIDE WEEKLY BREAKDOWN
+          </button>
+        </div>
+
+        <div id="weekly-breakdown-inner" class="weekly-breakdown-inner" style="display: block;">
+          <div class="weekly-breakdown-controls">
+            <label for="breakdown-week-select">Select Week:</label>
+            <select id="breakdown-week-select"></select>
+
+            <div class="breakdown-view-toggle">
+              <button
+                type="button"
+                id="breakdown-table-btn"
+                class="btn-pill active"
+              >
+                TABLE
+              </button>
+              <button
+                type="button"
+                id="breakdown-pie-btn"
+                class="btn-pill"
+              >
+                PIE CHART
+              </button>
+            </div>
+          </div>
+
+          <div class="weekly-breakdown-body">
+            <div id="breakdown-table-container" class="breakdown-table-container">
+              <!-- Table gets injected here -->
+            </div>
+
+            <div class="breakdown-chart-wrapper">
+              <canvas id="breakdown-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- League standings table + login reminder -->
+      <div id="league-login-reminder" style="display:none;" class="message">
+        Please log in to view full league standings.
+      </div>
+
+      <div id="league-standings-message" class="message"></div>
+
+      <div
+        id="league-standings-table-wrapper"
+        class="standings-table-wrapper"
       >
-        Pie Chart
-      </button>
-    </div>
-
-    <p id="week-breakdown-empty" class="message" style="display:none;"></p>
-
-    <!-- NEW: Table container (default view) -->
-    <div id="week-breakdown-table"></div>
-
-    <!-- Existing chart wrapper, now with id -->
-    <div
-      class="chart-wrapper"
-      id="week-breakdown-chart-wrapper"
-      style="display:none;"
-    >
-      <canvas id="week-breakdown-chart"></canvas>
-    </div>
-  </section>
-
-  <p id="league-login-reminder">You must be logged in to view standings.</p>
-  <div id="league-standings-message" class="message"></div>
-  <div id="league-standings-table-wrapper"></div>
-</section>
-
-
-
+        <!-- Standings table rendered by JS -->
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -122,9 +136,8 @@
     </script>
   </footer>
 
-<script src="assets/supabase-client.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="assets/supabase-client.js"></script>
   <script src="assets/nav.js"></script>
-<script src="assets/league-standings.js"></script>
+  <script src="assets/league-standings.js"></script>
 </body>
 </html>
