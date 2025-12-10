@@ -76,7 +76,7 @@ function computeCurrentScheduleWeek() {
 }
 
 function setScheduleMessage(text) {
-  if (!scheduleMessage) return; // safety
+  if (!scheduleMessage) return;
   scheduleMessage.textContent = text || "";
   if (text) {
     scheduleMessage.style.display = "block";
@@ -88,6 +88,7 @@ function setScheduleMessage(text) {
 function formatKickoffET(isoString) {
   if (!isoString) return "";
   const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString("en-US", {
     weekday: "short",
     month: "short",
@@ -107,13 +108,14 @@ async function loadScheduleForWeek(week) {
     return scheduleCacheByWeek.get(week);
   }
 
+  // IMPORTANT: kickoff_et must match the real column name in Supabase
   const { data, error } = await supaSchedule
     .from("schedule")
     .select(
-      "id, week, kickoff_time_et, home_team, away_team, location, network"
+      "id, week, kickoff_et, home_team, away_team, location, network" // <-- kickoff_et
     )
     .eq("week", week)
-    .order("kickoff_time_et", { ascending: true });
+    .order("kickoff_et", { ascending: true }); // <-- kickoff_et
 
   if (error) {
     console.error(error);
@@ -182,7 +184,7 @@ function renderScheduleGrid(rows, week) {
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "schedule-card-kickoff";
-    timeSpan.textContent = formatKickoffET(g.kickoff_time_et);
+    timeSpan.textContent = formatKickoffET(g.kickoff_et); // <-- kickoff_et
     header.appendChild(timeSpan);
 
     if (g.network) {
