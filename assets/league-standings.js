@@ -6,7 +6,9 @@ const supaLeague = window.supabaseClient;
 const leagueSection = document.getElementById("league-standings-section");
 const leagueLoginReminder = document.getElementById("league-login-reminder");
 const leagueMessage = document.getElementById("league-standings-message");
-const leagueTableWrapper = document.getElementById("league-standings-table-wrapper");
+const leagueTableWrapper = document.getElementById(
+  "league-standings-table-wrapper"
+);
 
 // Entries remaining callout
 const entriesRemainingCallout = document.getElementById(
@@ -25,7 +27,7 @@ const breakdownTableContainer = document.getElementById(
 );
 const breakdownChartCanvas = document.getElementById("breakdown-chart");
 
-// Chart.js instance
+// Chart.js instance (optional)
 let breakdownChart = null;
 
 // Cached data for breakdown
@@ -62,9 +64,7 @@ function computeIsActive(entry, picksByEntry) {
 
   let hasLoss = false;
   entryPicks.forEach((p) => {
-    if (p.result === "LOSS") {
-      hasLoss = true;
-    }
+    if (p.result === "LOSS") hasLoss = true;
   });
 
   if (hasLoss) return false;
@@ -267,7 +267,7 @@ function renderLeagueTable(stats, weeks) {
 }
 
 // ------------------------------------------------------------------
-// Weekly breakdown (table + pie chart)
+// Weekly breakdown (table + optional pie chart)
 // ------------------------------------------------------------------
 
 function initWeeklyBreakdown(weeks, picks) {
@@ -275,6 +275,14 @@ function initWeeklyBreakdown(weeks, picks) {
   breakdownPicks = picks.slice();
 
   if (!breakdownCard || !breakdownWeekSelect) return;
+
+  // Make sure breakdown section is visible by default
+  if (breakdownInner) {
+    breakdownInner.style.display = "block";
+  }
+  if (breakdownToggleBtn) {
+    breakdownToggleBtn.textContent = "HIDE WEEKLY BREAKDOWN";
+  }
 
   // Populate week dropdown with only weeks that actually have picks
   const weeksWithPicks = new Set();
@@ -290,6 +298,9 @@ function initWeeklyBreakdown(weeks, picks) {
     opt.value = "";
     opt.textContent = "No weeks with picks yet";
     breakdownWeekSelect.appendChild(opt);
+
+    clearBreakdownVisuals();
+    return;
   } else {
     sortedWeeks.forEach((w) => {
       const opt = document.createElement("option");
@@ -300,28 +311,32 @@ function initWeeklyBreakdown(weeks, picks) {
   }
 
   // Default to latest week with picks
-  if (sortedWeeks.length) {
-    breakdownWeekSelect.value = String(sortedWeeks[sortedWeeks.length - 1]);
-    renderBreakdownForSelectedWeek("table");
-  } else {
-    clearBreakdownVisuals();
-  }
+  breakdownWeekSelect.value = String(sortedWeeks[sortedWeeks.length - 1]);
+
+  // Default mode: table
+  if (breakdownTableBtn) breakdownTableBtn.classList.add("active");
+  if (breakdownPieBtn) breakdownPieBtn.classList.remove("active");
+  renderBreakdownForSelectedWeek("table");
 }
 
 function clearBreakdownVisuals() {
   if (breakdownTableContainer) breakdownTableContainer.innerHTML = "";
+
+  // Safely destroy chart if it exists
   if (breakdownChart && typeof breakdownChart.destroy === "function") {
     breakdownChart.destroy();
     breakdownChart = null;
   }
   if (breakdownChartCanvas) {
     const ctx = breakdownChartCanvas.getContext("2d");
-    ctx.clearRect(
-      0,
-      0,
-      breakdownChartCanvas.width,
-      breakdownChartCanvas.height
-    );
+    if (ctx) {
+      ctx.clearRect(
+        0,
+        0,
+        breakdownChartCanvas.width || 400,
+        breakdownChartCanvas.height || 400
+      );
+    }
   }
 }
 
@@ -395,28 +410,30 @@ function renderBreakdownTable(week) {
 function renderBreakdownPieChart(week) {
   if (!breakdownChartCanvas) return;
 
+  // If Chart.js is not loaded, just skip the chart instead of throwing an error
+  if (typeof Chart === "undefined") {
+    // Hide the canvas to avoid an empty box
+    breakdownChartCanvas.style.display = "none";
+    return;
+  } else {
+    breakdownChartCanvas.style.display = "block";
+  }
+
   const rows = getPickCountsForWeek(week);
   const labels = rows.map((r) => r.team);
   const counts = rows.map((r) => r.count);
 
+  // Clear previous chart
   if (breakdownChart && typeof breakdownChart.destroy === "function") {
     breakdownChart.destroy();
     breakdownChart = null;
   }
 
-  if (!labels.length) {
-    // Nothing to draw
-    const ctx = breakdownChartCanvas.getContext("2d");
-    ctx.clearRect(
-      0,
-      0,
-      breakdownChartCanvas.width,
-      breakdownChartCanvas.height
-    );
+  const ctx = breakdownChartCanvas.getContext("2d");
+  if (!ctx || !labels.length) {
     return;
   }
 
-  const ctx = breakdownChartCanvas.getContext("2d");
   breakdownChart = new Chart(ctx, {
     type: "pie",
     data: {
@@ -448,11 +465,11 @@ function renderBreakdownForSelectedWeek(mode) {
   }
 
   if (mode === "pie") {
-    renderBreakdownTable(selected); // keep table visible below, if you like
+    renderBreakdownTable(selected); // keep table visible
     renderBreakdownPieChart(selected);
   } else {
     renderBreakdownTable(selected);
-    renderBreakdownPieChart(selected); // still update chart so the toggle is instant
+    // Do NOT force the pie chart in table mode; only update it on demand
   }
 }
 
