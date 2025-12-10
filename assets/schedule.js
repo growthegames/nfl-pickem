@@ -49,13 +49,28 @@ async function loadScheduleForWeek(week) {
     return scheduleCacheByWeek.get(week);
   }
 
+ async function loadScheduleForWeek(week) {
+  if (scheduleCacheByWeek.has(week)) {
+    return scheduleCacheByWeek.get(week);
+  }
+
+  // Be forgiving about columns: select everything,
+  // and don't assume kickoff_time_et exists for ordering.
   const { data, error } = await supaSchedule
     .from("schedule")
-    .select(
-      "id, week, kickoff_time_et, home_team, away_team, location, network"
-    )
-    .eq("week", week)
-    .order("kickoff_time_et", { ascending: true });
+    .select("*")
+    .eq("week", week);
+
+  if (error) {
+    console.error("Schedule query error:", error);
+    throw error;
+  }
+
+  const rows = data || [];
+  scheduleCacheByWeek.set(week, rows);
+  return rows;
+}
+
 
   if (error) {
     console.error(error);
