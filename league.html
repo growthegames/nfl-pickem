@@ -59,15 +59,21 @@
   <!-- Entries remaining callout -->
   <p id="entries-remaining-callout" class="entries-remaining-callout"></p>
 
-  <!-- NEW: Weekly breakdown UI -->
-  <section id="week-breakdown-section">
+  <!-- NEW: Toggle + weekly breakdown -->
+  <div class="breakdown-header-row">
     <h3>Weekly Pick Breakdown</h3>
+    <button type="button" id="toggle-breakdown-btn" class="ghost-toggle">
+      Hide weekly breakdown
+    </button>
+  </div>
+
+  <section id="week-breakdown-section" data-collapsed="false">
     <div class="week-breakdown-controls">
       <label for="breakdown-week-select">Select week:</label>
       <select id="breakdown-week-select"></select>
     </div>
     <p id="week-breakdown-empty" class="message" style="display:none;"></p>
-    <div class="chart-wrapper" style="max-width: 600px; margin-top: 1rem;">
+    <div class="chart-wrapper">
       <canvas id="week-breakdown-chart"></canvas>
     </div>
   </section>
@@ -76,6 +82,7 @@
   <div id="league-standings-message" class="message"></div>
   <div id="league-standings-table-wrapper"></div>
 </section>
+
 
   </main>
 
