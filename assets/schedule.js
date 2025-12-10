@@ -3,16 +3,20 @@
 const supaSchedule = window.supabaseClient;
 
 const scheduleWeekSelect = document.getElementById("schedule-week-select");
-const scheduleTableContainer = document.getElementById(
-  "schedule-table-container"
-);
-const scheduleJumpCurrentBtn = document.getElementById("schedule-jump-current");
+const scheduleTodayBtn = document.getElementById("schedule-today-btn");
+const scheduleMessageEl = document.getElementById("schedule-message");
+const scheduleGridEl = document.getElementById("schedule-grid");
 
 // Week 1 of the 2025 season starts on Thu, Sept 4, 2025
 // (month is 0-based: 8 = September)
 const SCHEDULE_SEASON_START_UTC = Date.UTC(2025, 8, 4);
 
-let scheduleCacheByWeek = new Map();
+// Cache by week so we don’t keep hitting Supabase for the same data
+const scheduleCacheByWeek = new Map();
+
+// --------------------------------------------------
+// Helpers
+// --------------------------------------------------
 
 function computeCurrentScheduleWeek() {
   const now = new Date();
@@ -35,27 +39,28 @@ function computeCurrentScheduleWeek() {
   return week;
 }
 
-function setScheduleMessage(text) {
-  if (!scheduleTableContainer) return;
-  scheduleTableContainer.innerHTML = "";
-  if (!text) return;
-  const p = document.createElement("p");
-  p.textContent = text;
-  scheduleTableContainer.appendChild(p);
+function setScheduleMessage(text, isError = false) {
+  if (!scheduleMessageEl) return;
+  scheduleMessageEl.textContent = text || "";
+  scheduleMessageEl.className = "message " + (isError ? "error" : "success");
 }
+
+function clearScheduleGrid() {
+  if (scheduleGridEl) {
+    scheduleGridEl.innerHTML = "";
+  }
+}
+
+// --------------------------------------------------
+// Supabase load
+// --------------------------------------------------
 
 async function loadScheduleForWeek(week) {
   if (scheduleCacheByWeek.has(week)) {
     return scheduleCacheByWeek.get(week);
   }
 
- async function loadScheduleForWeek(week) {
-  if (scheduleCacheByWeek.has(week)) {
-    return scheduleCacheByWeek.get(week);
-  }
-
-  // Be forgiving about columns: select everything,
-  // and don't assume kickoff_time_et exists for ordering.
+  // Be forgiving about columns: just select everything and filter by week.
   const { data, error } = await supaSchedule
     .from("schedule")
     .select("*")
@@ -71,51 +76,47 @@ async function loadScheduleForWeek(week) {
   return rows;
 }
 
+// --------------------------------------------------
+// Render
+// --------------------------------------------------
 
-  if (error) {
-    console.error(error);
-    throw error;
-  }
-
-  const rows = data || [];
-  scheduleCacheByWeek.set(week, rows);
-  return rows;
-}
-
-function renderScheduleTable(rows, week) {
-  if (!scheduleTableContainer) return;
-  scheduleTableContainer.innerHTML = "";
+function renderScheduleGrid(rows, week) {
+  clearScheduleGrid();
 
   if (!rows.length) {
-    const p = document.createElement("p");
-    p.textContent =
-      "No games found for Week " + week + ". The schedule may not be loaded yet.";
-    scheduleTableContainer.appendChild(p);
+    setScheduleMessage(
+      "No games found for Week " +
+        week +
+        ". The schedule may not be loaded yet.",
+      false
+    );
     return;
   }
 
-  const table = document.createElement("table");
-  const thead = document.createElement("thead");
-  const headerRow = document.createElement("tr");
+  setScheduleMessage(
+    "Showing " + rows.length + " game(s) for Week " + week + ".",
+    false
+  );
 
-  ["Kickoff (ET)", "Away", "Home", "Network", "Location"].forEach((label) => {
-    const th = document.createElement("th");
-    th.textContent = label;
-    headerRow.appendChild(th);
+  // Try to sort by kickoff_time_et if present
+  const sorted = rows.slice().sort((a, b) => {
+    if (!a.kickoff_time_et || !b.kickoff_time_et) return 0;
+    return (
+      new Date(a.kickoff_time_et).getTime() -
+      new Date(b.kickoff_time_et).getTime()
+    );
   });
 
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
+  sorted.forEach((g) => {
+    const card = document.createElement("div");
+    card.className = "schedule-game";
 
-  const tbody = document.createElement("tbody");
-
-  rows.forEach((g) => {
-    const tr = document.createElement("tr");
-
-    const kickoffCell = document.createElement("td");
+    // Top: kickoff time (ET)
+    const top = document.createElement("div");
+    top.className = "schedule-game-top";
     if (g.kickoff_time_et) {
       const d = new Date(g.kickoff_time_et);
-      kickoffCell.textContent = d.toLocaleString("en-US", {
+      top.textContent = d.toLocaleString("en-US", {
         weekday: "short",
         month: "short",
         day: "numeric",
@@ -124,57 +125,73 @@ function renderScheduleTable(rows, week) {
         timeZone: "America/New_York",
       });
     } else {
-      kickoffCell.textContent = "";
+      top.textContent = "";
     }
-    tr.appendChild(kickoffCell);
 
-    const awayCell = document.createElement("td");
-    awayCell.textContent = g.away_team || "";
-    tr.appendChild(awayCell);
+    // Middle: away @ home
+    const middle = document.createElement("div");
+    middle.className = "schedule-game-middle";
+    const awayTeam = g.away_team || "";
+    const homeTeam = g.home_team || "";
+    middle.textContent = awayTeam && homeTeam
+      ? `${awayTeam} @ ${homeTeam}`
+      : awayTeam || homeTeam || "";
 
-    const homeCell = document.createElement("td");
-    homeCell.textContent = g.home_team || "";
-    tr.appendChild(homeCell);
+    // Bottom: network + location
+    const bottom = document.createElement("div");
+    bottom.className = "schedule-game-bottom";
+    const pieces = [];
+    if (g.network) pieces.push(g.network);
+    if (g.location) pieces.push(g.location);
+    bottom.textContent = pieces.join(" • ");
 
-    const networkCell = document.createElement("td");
-    networkCell.textContent = g.network || "";
-    tr.appendChild(networkCell);
+    card.appendChild(top);
+    card.appendChild(middle);
+    card.appendChild(bottom);
 
-    const locCell = document.createElement("td");
-    locCell.textContent = g.location || "";
-    tr.appendChild(locCell);
-
-    tbody.appendChild(tr);
+    scheduleGridEl.appendChild(card);
   });
-
-  table.appendChild(tbody);
-  scheduleTableContainer.appendChild(table);
 }
+
+// --------------------------------------------------
+// Events / init
+// --------------------------------------------------
 
 async function handleWeekChange() {
   const week = Number(scheduleWeekSelect.value);
   if (!week || week < 1 || week > 18) {
     setScheduleMessage(
-      "Please select a valid week between 1 and 18 to view the schedule."
+      "Please select a valid week between 1 and 18 to view the schedule.",
+      true
     );
+    clearScheduleGrid();
     return;
   }
 
   try {
-    setScheduleMessage("Loading schedule for Week " + week + "...");
+    setScheduleMessage("Loading schedule for Week " + week + "...", false);
     const rows = await loadScheduleForWeek(week);
-    renderScheduleTable(rows, week);
+    renderScheduleGrid(rows, week);
   } catch (err) {
     console.error(err);
-    setScheduleMessage("Error loading schedule for that week.");
+    clearScheduleGrid();
+    setScheduleMessage("Error loading schedule for that week.", true);
   }
 }
 
 async function initSchedule() {
   if (!scheduleWeekSelect) return;
 
-  // Week select is usually already populated with 1–18 in the HTML,
-  // but we can still set its initial value to the current week.
+  // If the select isn't already populated in HTML, add 1–18
+  if (!scheduleWeekSelect.options.length) {
+    for (let w = 1; w <= 18; w++) {
+      const opt = document.createElement("option");
+      opt.value = String(w);
+      opt.textContent = "Week " + w;
+      scheduleWeekSelect.appendChild(opt);
+    }
+  }
+
   const currentWeek = computeCurrentScheduleWeek();
   if (
     currentWeek >= 1 &&
@@ -189,19 +206,20 @@ async function initSchedule() {
   await handleWeekChange();
 }
 
-// Event wiring
+// Wire events
 if (scheduleWeekSelect) {
   scheduleWeekSelect.addEventListener("change", () => {
     handleWeekChange();
   });
 }
 
-if (scheduleJumpCurrentBtn && scheduleWeekSelect) {
-  scheduleJumpCurrentBtn.addEventListener("click", async () => {
+if (scheduleTodayBtn && scheduleWeekSelect) {
+  scheduleTodayBtn.addEventListener("click", async () => {
     const currentWeek = computeCurrentScheduleWeek();
     scheduleWeekSelect.value = String(currentWeek);
     await handleWeekChange();
   });
 }
 
+// Kick things off
 initSchedule();
