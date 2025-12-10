@@ -793,6 +793,59 @@ td {
   text-align: center;
   color: #6b7280;
 }
+/* ===== Schedule ===== */
+
+.schedule-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.schedule-controls label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #e2e8f0;
+}
+
+#schedule-week-select {
+  min-width: 180px;
+}
+
+/* Grid of game “cards” */
+.schedule-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+/* Each game block */
+.schedule-grid > div {
+  background: rgba(15, 23, 42, 0.95);        /* deep blue/black to match site */
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.65rem;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #e5e7eb;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+/* Make the matchup text stand out a bit */
+.schedule-grid > div strong,
+.schedule-grid > div span {
+  display: block;
+}
+
+/* Optional: subtle hover so it feels interactive */
+.schedule-grid > div:hover {
+  border-color: rgba(248, 250, 252, 0.6);
+  transform: translateY(-1px);
+  transition: all 0.12s ease-out;
+}
 
 
 /* ===== Footer ===== */
