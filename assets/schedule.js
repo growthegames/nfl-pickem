@@ -4,8 +4,6 @@ const supaSchedule = window.supabaseClient;
 
 const scheduleWeekSelect = document.getElementById("schedule-week-select");
 const scheduleTodayBtn = document.getElementById("schedule-today-btn");
-const scheduleMessageEl = document.getElementById("schedule-message");
-const scheduleGridEl = document.getElementById("schedule-grid");
 
 // Week 1 of the 2025 season starts on Thu, Sept 4, 2025
 // (month is 0-based: 8 = September)
@@ -13,6 +11,17 @@ const SCHEDULE_SEASON_START_UTC = Date.UTC(2025, 8, 4);
 
 // Cache by week so we don’t keep hitting Supabase for the same data
 const scheduleCacheByWeek = new Map();
+
+// --------------------------------------------------
+// Small helpers to always grab the *current* DOM nodes
+// --------------------------------------------------
+function getScheduleMessageEl() {
+  return document.getElementById("schedule-message");
+}
+
+function getScheduleGridEl() {
+  return document.getElementById("schedule-grid");
+}
 
 // --------------------------------------------------
 // Helpers
@@ -40,14 +49,16 @@ function computeCurrentScheduleWeek() {
 }
 
 function setScheduleMessage(text, isError = false) {
-  if (!scheduleMessageEl) return;
-  scheduleMessageEl.textContent = text || "";
-  scheduleMessageEl.className = "message " + (isError ? "error" : "success");
+  const el = getScheduleMessageEl();
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = "message " + (isError ? "error" : "success");
 }
 
 function clearScheduleGrid() {
-  if (scheduleGridEl) {
-    scheduleGridEl.innerHTML = "";
+  const grid = getScheduleGridEl();
+  if (grid) {
+    grid.innerHTML = "";
   }
 }
 
@@ -81,6 +92,12 @@ async function loadScheduleForWeek(week) {
 // --------------------------------------------------
 
 function renderScheduleGrid(rows, week) {
+  const grid = getScheduleGridEl();
+  if (!grid) {
+    console.warn("schedule-grid element not found in DOM.");
+    return;
+  }
+
   clearScheduleGrid();
 
   if (!rows.length) {
@@ -133,9 +150,10 @@ function renderScheduleGrid(rows, week) {
     middle.className = "schedule-game-middle";
     const awayTeam = g.away_team || "";
     const homeTeam = g.home_team || "";
-    middle.textContent = awayTeam && homeTeam
-      ? `${awayTeam} @ ${homeTeam}`
-      : awayTeam || homeTeam || "";
+    middle.textContent =
+      awayTeam && homeTeam
+        ? `${awayTeam} @ ${homeTeam}`
+        : awayTeam || homeTeam || "";
 
     // Bottom: network + location
     const bottom = document.createElement("div");
@@ -149,7 +167,7 @@ function renderScheduleGrid(rows, week) {
     card.appendChild(middle);
     card.appendChild(bottom);
 
-    scheduleGridEl.appendChild(card);
+    grid.appendChild(card);
   });
 }
 
@@ -158,7 +176,7 @@ function renderScheduleGrid(rows, week) {
 // --------------------------------------------------
 
 async function handleWeekChange() {
-  const week = Number(scheduleWeekSelect.value);
+  const week = Number(scheduleWeekSelect && scheduleWeekSelect.value);
   if (!week || week < 1 || week > 18) {
     setScheduleMessage(
       "Please select a valid week between 1 and 18 to view the schedule.",
