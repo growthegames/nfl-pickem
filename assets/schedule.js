@@ -9,62 +9,80 @@ const scheduleGrid = document.getElementById("schedule-grid");
 const scheduleMessage = document.getElementById("schedule-message");
 
 // Week 1 of the 2025 season starts on Thu, Sept 4, 2025
+// (month is 0-based: 8 = September)
 const SCHEDULE_SEASON_START_UTC = Date.UTC(2025, 8, 4);
 
-// Simple cache
+// Simple cache so we don’t keep hitting Supabase for the same week
 const scheduleCacheByWeek = new Map();
 
-/* -------------------------------------------------------------
-   TEAM NAME → ABBREVIATION → LOGO FILE
-------------------------------------------------------------- */
-const TEAM_ABBREVIATIONS = {
-  "Arizona Cardinals": "ARI",
-  "Atlanta Falcons": "ATL",
-  "Baltimore Ravens": "BAL",
-  "Buffalo Bills": "BUF",
-  "Carolina Panthers": "CAR",
-  "Chicago Bears": "CHI",
-  "Cincinnati Bengals": "CIN",
-  "Cleveland Browns": "CLE",
-  "Dallas Cowboys": "DAL",
-  "Denver Broncos": "DEN",
-  "Detroit Lions": "DET",
-  "Green Bay Packers": "GB",
-  "Houston Texans": "HOU",
-  "Indianapolis Colts": "IND",
-  "Jacksonville Jaguars": "JAX",
-  "Kansas City Chiefs": "KC",
-  "Las Vegas Raiders": "LV",
-  "Los Angeles Chargers": "LAC",
-  "Los Angeles Rams": "LAR",
-  "Miami Dolphins": "MIA",
-  "Minnesota Vikings": "MIN",
-  "New England Patriots": "NE",
-  "New Orleans Saints": "NO",
-  "New York Giants": "NYG",
-  "New York Jets": "NYJ",
-  "Philadelphia Eagles": "PHI",
-  "Pittsburgh Steelers": "PIT",
-  "San Francisco 49ers": "SF",
-  "Seattle Seahawks": "SEA",
-  "Tampa Bay Buccaneers": "TB",
-  "Tennessee Titans": "TEN",
-  "Washington Commanders": "WAS",
+// Map full team name -> logo path (3-letter files in assets/logos).
+const TEAM_LOGOS = {
+  "Arizona Cardinals": "assets/logos/ARI.png",
+  "Atlanta Falcons": "assets/logos/ATL.png",
+  "Baltimore Ravens": "assets/logos/BAL.png",
+  "Buffalo Bills": "assets/logos/BUF.png",
+  "Carolina Panthers": "assets/logos/CAR.png",
+  "Chicago Bears": "assets/logos/CHI.png",
+  "Cincinnati Bengals": "assets/logos/CIN.png",
+  "Cleveland Browns": "assets/logos/CLE.png",
+  "Dallas Cowboys": "assets/logos/DAL.png",
+  "Denver Broncos": "assets/logos/DEN.png",
+  "Detroit Lions": "assets/logos/DET.png",
+  "Green Bay Packers": "assets/logos/GB.png",
+  "Houston Texans": "assets/logos/HOU.png",
+  "Indianapolis Colts": "assets/logos/IND.png",
+  "Jacksonville Jaguars": "assets/logos/JAX.png",
+  "Kansas City Chiefs": "assets/logos/KC.png",
+  "Las Vegas Raiders": "assets/logos/LV.png",
+  "Los Angeles Chargers": "assets/logos/LAC.png",
+  "Los Angeles Rams": "assets/logos/LAR.png",
+  "Miami Dolphins": "assets/logos/MIA.png",
+  "Minnesota Vikings": "assets/logos/MIN.png",
+  "New England Patriots": "assets/logos/NE.png",
+  "New Orleans Saints": "assets/logos/NO.png",
+  "New York Giants": "assets/logos/NYG.png",
+  "New York Jets": "assets/logos/NYJ.png",
+  "Philadelphia Eagles": "assets/logos/PHI.png",
+  "Pittsburgh Steelers": "assets/logos/PIT.png",
+  "San Francisco 49ers": "assets/logos/SF.png",
+  "Seattle Seahawks": "assets/logos/SEA.png",
+  "Tampa Bay Buccaneers": "assets/logos/TB.png",
+  "Tennessee Titans": "assets/logos/TEN.png",
+  "Washington Commanders": "assets/logos/WAS.png",
 };
+
+// --------------------------------------------------------------
+// Helpers
+// --------------------------------------------------------------
 
 function computeCurrentScheduleWeek() {
   const now = new Date();
-  const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const diffDays = Math.floor((nowUtc - SCHEDULE_SEASON_START_UTC) / (1000 * 60 * 60 * 24));
+  const nowUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  );
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const diffDays = Math.floor(
+    (nowUtc - SCHEDULE_SEASON_START_UTC) / msPerDay
+  );
+
   let week = Math.floor(diffDays / 7) + 1;
   if (week < 1) week = 1;
   if (week > 18) week = 18;
+
   return week;
 }
 
 function setScheduleMessage(text) {
+  if (!scheduleMessage) return; // safety
   scheduleMessage.textContent = text || "";
-  scheduleMessage.style.display = text ? "block" : "none";
+  if (text) {
+    scheduleMessage.style.display = "block";
+  } else {
+    scheduleMessage.style.display = "none";
+  }
 }
 
 function formatKickoffET(isoString) {
@@ -80,53 +98,42 @@ function formatKickoffET(isoString) {
   });
 }
 
-function getKickoffField(row) {
-  return row.kickoff_et || row.kickoff_time_et || null;
-}
-
-/* -------------------------------------------------------------
-   DATA LOADING
-------------------------------------------------------------- */
+// --------------------------------------------------------------
+// Data loading
+// --------------------------------------------------------------
 
 async function loadScheduleForWeek(week) {
-  if (scheduleCacheByWeek.has(week)) return scheduleCacheByWeek.get(week);
+  if (scheduleCacheByWeek.has(week)) {
+    return scheduleCacheByWeek.get(week);
+  }
 
   const { data, error } = await supaSchedule
     .from("schedule")
-    .select("*")
-    .eq("week", week);
+    .select(
+      "id, week, kickoff_time_et, home_team, away_team, location, network"
+    )
+    .eq("week", week)
+    .order("kickoff_time_et", { ascending: true });
 
   if (error) {
     console.error(error);
     throw error;
   }
 
-  const rows = (data || []).slice();
-
-  rows.sort((a, b) => {
-    const ka = getKickoffField(a);
-    const kb = getKickoffField(b);
-    if (!ka && !kb) return 0;
-    if (!ka) return 1;
-    if (!kb) return -1;
-    return new Date(ka).getTime() - new Date(kb).getTime();
-  });
-
+  const rows = data || [];
   scheduleCacheByWeek.set(week, rows);
   return rows;
 }
 
-/* -------------------------------------------------------------
-   RENDERING
-------------------------------------------------------------- */
+// --------------------------------------------------------------
+// Rendering
+// --------------------------------------------------------------
 
 function createTeamBlock(teamName, role) {
   const wrapper = document.createElement("div");
   wrapper.className = `schedule-team schedule-team-${role}`;
 
-  const abbr = TEAM_ABBREVIATIONS[teamName];
-  const logoPath = abbr ? `assets/logos/${abbr}.png` : null;
-
+  const logoPath = TEAM_LOGOS[teamName] || "";
   if (logoPath) {
     const img = document.createElement("img");
     img.src = logoPath;
@@ -140,12 +147,12 @@ function createTeamBlock(teamName, role) {
 
   const nameSpan = document.createElement("span");
   nameSpan.className = "schedule-team-name";
-  nameSpan.textContent = teamName;
+  nameSpan.textContent = teamName || "";
   textWrap.appendChild(nameSpan);
 
   const roleSpan = document.createElement("span");
   roleSpan.className = "schedule-team-role";
-  roleSpan.textContent = role.toUpperCase();
+  roleSpan.textContent = role === "home" ? "HOME" : "AWAY";
   textWrap.appendChild(roleSpan);
 
   wrapper.appendChild(textWrap);
@@ -154,11 +161,13 @@ function createTeamBlock(teamName, role) {
 }
 
 function renderScheduleGrid(rows, week) {
+  if (!scheduleGrid) return;
   scheduleGrid.innerHTML = "";
 
   if (!rows.length) {
     const p = document.createElement("p");
-    p.textContent = `No games found for Week ${week}.`;
+    p.textContent =
+      "No games found for Week " + week + ". The schedule may not be loaded yet.";
     scheduleGrid.appendChild(p);
     return;
   }
@@ -167,13 +176,13 @@ function renderScheduleGrid(rows, week) {
     const card = document.createElement("div");
     card.className = "schedule-card";
 
-    // Header
+    // Header: time + network
     const header = document.createElement("div");
     header.className = "schedule-card-header";
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "schedule-card-kickoff";
-    timeSpan.textContent = formatKickoffET(getKickoffField(g));
+    timeSpan.textContent = formatKickoffET(g.kickoff_time_et);
     header.appendChild(timeSpan);
 
     if (g.network) {
@@ -185,26 +194,33 @@ function renderScheduleGrid(rows, week) {
 
     card.appendChild(header);
 
-    // Body
+    // Body: away @ home
     const body = document.createElement("div");
     body.className = "schedule-card-body";
 
-    body.appendChild(createTeamBlock(g.away_team, "away"));
+    const awayBlock = createTeamBlock(g.away_team, "away");
+    const homeBlock = createTeamBlock(g.home_team, "home");
 
     const vsSpan = document.createElement("span");
     vsSpan.className = "schedule-card-vs";
     vsSpan.textContent = "@";
-    body.appendChild(vsSpan);
 
-    body.appendChild(createTeamBlock(g.home_team, "home"));
+    body.appendChild(awayBlock);
+    body.appendChild(vsSpan);
+    body.appendChild(homeBlock);
 
     card.appendChild(body);
 
-    // Footer
+    // Footer: location
     if (g.location) {
       const footer = document.createElement("div");
       footer.className = "schedule-card-footer";
-      footer.textContent = g.location;
+
+      const locSpan = document.createElement("span");
+      locSpan.className = "schedule-card-location";
+      locSpan.textContent = g.location;
+      footer.appendChild(locSpan);
+
       card.appendChild(footer);
     }
 
@@ -212,55 +228,76 @@ function renderScheduleGrid(rows, week) {
   });
 }
 
-/* -------------------------------------------------------------
-   EVENT HANDLERS / INIT
-------------------------------------------------------------- */
+// --------------------------------------------------------------
+// Event handlers / init
+// --------------------------------------------------------------
 
 async function handleWeekChange() {
+  if (!scheduleWeekSelect) return;
+
   const week = Number(scheduleWeekSelect.value);
   if (!week || week < 1 || week > 18) {
-    setScheduleMessage("Please select a valid week.");
-    scheduleGrid.innerHTML = "";
+    setScheduleMessage(
+      "Please select a valid week between 1 and 18 to view the schedule."
+    );
+    if (scheduleGrid) scheduleGrid.innerHTML = "";
     return;
   }
 
   try {
-    setScheduleMessage(`Loading schedule for Week ${week}...`);
+    setScheduleMessage("Loading schedule for Week " + week + "...");
+    if (scheduleGrid) scheduleGrid.innerHTML = "";
     const rows = await loadScheduleForWeek(week);
     setScheduleMessage("");
     renderScheduleGrid(rows, week);
   } catch (err) {
     console.error(err);
-    setScheduleMessage("Error loading schedule.");
+    setScheduleMessage("Error loading schedule for that week.");
   }
 }
 
 function populateWeekSelect() {
+  if (!scheduleWeekSelect) return;
+
   scheduleWeekSelect.innerHTML = "";
   for (let w = 1; w <= 18; w++) {
     const opt = document.createElement("option");
-    opt.value = w;
-    opt.textContent = `Week ${w}`;
+    opt.value = String(w);
+    opt.textContent = "Week " + w;
     scheduleWeekSelect.appendChild(opt);
   }
 }
 
 async function initSchedule() {
+  if (!scheduleWeekSelect || !scheduleGrid) {
+    console.warn("Schedule: required DOM elements not found.");
+    return;
+  }
+
   populateWeekSelect();
 
   const currentWeek = computeCurrentScheduleWeek();
-  scheduleWeekSelect.value = String(currentWeek);
+  if (currentWeek >= 1 && currentWeek <= 18) {
+    scheduleWeekSelect.value = String(currentWeek);
+  }
 
   await handleWeekChange();
 }
 
-scheduleWeekSelect?.addEventListener("change", handleWeekChange);
+// Wire events
+if (scheduleWeekSelect) {
+  scheduleWeekSelect.addEventListener("change", () => {
+    handleWeekChange();
+  });
+}
 
-scheduleTodayBtn?.addEventListener("click", async () => {
-  const currentWeek = computeCurrentScheduleWeek();
-  scheduleWeekSelect.value = String(currentWeek);
-  await handleWeekChange();
-});
+if (scheduleTodayBtn && scheduleWeekSelect) {
+  scheduleTodayBtn.addEventListener("click", async () => {
+    const currentWeek = computeCurrentScheduleWeek();
+    scheduleWeekSelect.value = String(currentWeek);
+    await handleWeekChange();
+  });
+}
 
-// Start it up
+// Kick it off
 initSchedule();
