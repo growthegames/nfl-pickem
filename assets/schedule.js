@@ -15,6 +15,15 @@ const SCHEDULE_SEASON_START_UTC = Date.UTC(2025, 8, 4);
 // Simple cache so we don’t keep hitting Supabase for the same week
 const scheduleCacheByWeek = new Map();
 
+// ▶️ List of possible kickoff column names in your Supabase table.
+// If your actual column is called something else, just add it here.
+const KICKOFF_FIELD_CANDIDATES = [
+  "kickoff_et",
+  "kickoff_time_et",
+  "kickoff",
+  "kickoff_time",
+];
+
 // Map full team name -> logo path (3-letter files in assets/logos).
 const TEAM_LOGOS = {
   "Arizona Cardinals": "assets/logos/ARI.png",
@@ -78,11 +87,26 @@ function computeCurrentScheduleWeek() {
 function setScheduleMessage(text) {
   if (!scheduleMessage) return;
   scheduleMessage.textContent = text || "";
-  if (text) {
-    scheduleMessage.style.display = "block";
-  } else {
-    scheduleMessage.style.display = "none";
+  scheduleMessage.style.display = text ? "block" : "none";
+}
+
+/**
+ * Given a schedule row, return the kickoff ISO string (or null)
+ * by checking several possible column names.
+ */
+function getKickoffIso(row) {
+  if (!row || typeof row !== "object") return null;
+
+  for (const field of KICKOFF_FIELD_CANDIDATES) {
+    if (field in row && row[field]) {
+      return row[field];
+    }
   }
+
+  // If we get here, we couldn't find any of the known fields.
+  // Log once per row so you can see the actual column name in the console.
+  console.warn("No kickoff field found on schedule row:", row);
+  return null;
 }
 
 function formatKickoffET(isoString) {
@@ -108,21 +132,29 @@ async function loadScheduleForWeek(week) {
     return scheduleCacheByWeek.get(week);
   }
 
-  // IMPORTANT: kickoff_et must match the real column name in Supabase
+  // NOTE: select("*") so we NEVER hit "column does not exist" errors.
   const { data, error } = await supaSchedule
     .from("schedule")
-    .select(
-      "id, week, kickoff_et, home_team, away_team, location, network" // <-- kickoff_et
-    )
-    .eq("week", week)
-    .order("kickoff_et", { ascending: true }); // <-- kickoff_et
+    .select("*")
+    .eq("week", week);
 
   if (error) {
     console.error(error);
     throw error;
   }
 
-  const rows = data || [];
+  const rows = (data || []).slice();
+
+  // Sort rows on the client by kickoff time (if present).
+  rows.sort((a, b) => {
+    const ka = getKickoffIso(a);
+    const kb = getKickoffIso(b);
+    if (!ka && !kb) return 0;
+    if (!ka) return 1;
+    if (!kb) return -1;
+    return new Date(ka).getTime() - new Date(kb).getTime();
+  });
+
   scheduleCacheByWeek.set(week, rows);
   return rows;
 }
@@ -184,7 +216,7 @@ function renderScheduleGrid(rows, week) {
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "schedule-card-kickoff";
-    timeSpan.textContent = formatKickoffET(g.kickoff_et); // <-- kickoff_et
+    timeSpan.textContent = formatKickoffET(getKickoffIso(g));
     header.appendChild(timeSpan);
 
     if (g.network) {
