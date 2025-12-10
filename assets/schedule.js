@@ -16,7 +16,6 @@ const SCHEDULE_SEASON_START_UTC = Date.UTC(2025, 8, 4);
 const scheduleCacheByWeek = new Map();
 
 // Map full team name -> logo path.
-// Update paths if your filenames differ.
 const TEAM_LOGOS = {
   "Arizona Cardinals": "assets/logos/arizona-cardinals.png",
   "Atlanta Falcons": "assets/logos/atlanta-falcons.png",
@@ -79,11 +78,7 @@ function computeCurrentScheduleWeek() {
 function setScheduleMessage(text) {
   if (!scheduleMessage) return;
   scheduleMessage.textContent = text || "";
-  if (text) {
-    scheduleMessage.style.display = "block";
-  } else {
-    scheduleMessage.style.display = "none";
-  }
+  scheduleMessage.style.display = text ? "block" : "none";
 }
 
 function formatKickoffET(isoString) {
@@ -99,6 +94,14 @@ function formatKickoffET(isoString) {
   });
 }
 
+/**
+ * Given a row from the schedule table, return the best kickoff datetime string
+ * we can find (works whether the column is named kickoff_et or kickoff_time_et).
+ */
+function getKickoffField(row) {
+  return row.kickoff_et || row.kickoff_time_et || null;
+}
+
 // --------------------------------------------------------------
 // Data loading
 // --------------------------------------------------------------
@@ -108,22 +111,30 @@ async function loadScheduleForWeek(week) {
     return scheduleCacheByWeek.get(week);
   }
 
+  // NOTE: we use select("*") so we don't care what the exact kickoff
+  // column is called – we’ll sort & render based on whatever exists.
   const { data, error } = await supaSchedule
     .from("schedule")
-    .select(
-      // 🔁 NOTE: using kickoff_et here to match your actual column name
-      "id, week, kickoff_et, home_team, away_team, location, network"
-    )
-    .eq("week", week)
-    // 🔁 And ordering by kickoff_et as well
-    .order("kickoff_et", { ascending: true });
+    .select("*")
+    .eq("week", week);
 
   if (error) {
     console.error(error);
     throw error;
   }
 
-  const rows = data || [];
+  const rows = (data || []).slice();
+
+  // Sort client-side by kickoff time if available
+  rows.sort((a, b) => {
+    const ka = getKickoffField(a);
+    const kb = getKickoffField(b);
+    if (!ka && !kb) return 0;
+    if (!ka) return 1;
+    if (!kb) return -1;
+    return new Date(ka).getTime() - new Date(kb).getTime();
+  });
+
   scheduleCacheByWeek.set(week, rows);
   return rows;
 }
@@ -185,8 +196,8 @@ function renderScheduleGrid(rows, week) {
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "schedule-card-kickoff";
-    // 🔁 use kickoff_et from the row
-    timeSpan.textContent = formatKickoffET(g.kickoff_et);
+    const kickoffValue = getKickoffField(g);
+    timeSpan.textContent = formatKickoffET(kickoffValue);
     header.appendChild(timeSpan);
 
     if (g.network) {
