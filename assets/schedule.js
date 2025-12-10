@@ -3,10 +3,12 @@
 const supaSchedule = window.supabaseClient;
 
 const scheduleWeekSelect = document.getElementById("schedule-week-select");
-const scheduleTodayBtn = document.getElementById("schedule-today-btn");
+// Support either id for the “jump” button, in case HTML hasn’t been updated.
+const scheduleTodayBtn =
+  document.getElementById("schedule-today-btn") ||
+  document.getElementById("schedule-jump-current");
 
-// Week 1 of the 2025 season starts on Thu, Sept 4, 2025
-// (month is 0-based: 8 = September)
+// Week 1 of the 2025 season starts on Thu, Sept 4, 2025 (month is 0-based: 8 = September)
 const SCHEDULE_SEASON_START_UTC = Date.UTC(2025, 8, 4);
 
 // Cache by week so we don’t keep hitting Supabase for the same data
@@ -19,8 +21,12 @@ function getScheduleMessageEl() {
   return document.getElementById("schedule-message");
 }
 
+// Try both possible ids for the grid container
 function getScheduleGridEl() {
-  return document.getElementById("schedule-grid");
+  return (
+    document.getElementById("schedule-grid") ||
+    document.getElementById("schedule-table-container")
+  );
 }
 
 // --------------------------------------------------
@@ -71,7 +77,7 @@ async function loadScheduleForWeek(week) {
     return scheduleCacheByWeek.get(week);
   }
 
-  // Be forgiving about columns: just select everything and filter by week.
+  // Be forgiving about columns: select everything and filter by week.
   const { data, error } = await supaSchedule
     .from("schedule")
     .select("*")
@@ -94,7 +100,11 @@ async function loadScheduleForWeek(week) {
 function renderScheduleGrid(rows, week) {
   const grid = getScheduleGridEl();
   if (!grid) {
-    console.warn("schedule-grid element not found in DOM.");
+    // If this happens, it means the HTML still doesn’t have a matching id.
+    console.warn(
+      'schedule.js: schedule grid element not found. ' +
+        'Make sure your HTML has <div id="schedule-grid"></div> (or id="schedule-table-container").'
+    );
     return;
   }
 
