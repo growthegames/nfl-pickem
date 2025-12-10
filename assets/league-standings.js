@@ -7,13 +7,64 @@ const leagueLoginReminder = document.getElementById("league-login-reminder");
 const leagueMessage = document.getElementById("league-standings-message");
 const leagueTableWrapper = document.getElementById("league-standings-table-wrapper");
 
+// NEW: callout element for entries remaining
+const entriesRemainingCallout = document.getElementById("entries-remaining-callout");
+
 let leagueUser = null;
+let leagueEntries = [];
+let leaguePicks = [];
+
+// ---------------------- Helpers ----------------------
 
 function setLeagueMessage(text, isError = false) {
   if (!leagueMessage) return;
   leagueMessage.textContent = text || "";
   leagueMessage.className = "message " + (isError ? "error" : "success");
 }
+
+// NEW: Update the "Entries remaining" callout
+function updateEntriesRemainingCallout() {
+  if (!entriesRemainingCallout) return;
+
+  // Preferred: use leagueEntries (the raw entries from Supabase)
+  if (Array.isArray(leagueEntries) && leagueEntries.length > 0) {
+    const total = leagueEntries.length;
+    const alive = leagueEntries.filter((e) => e.is_active).length;
+
+    entriesRemainingCallout.textContent =
+      "Entries remaining: " + alive + " of " + total;
+    return;
+  }
+
+  // Fallback: derive from table rows if leagueEntries isn't available
+  if (!leagueTableWrapper) {
+    entriesRemainingCallout.textContent = "";
+    return;
+  }
+
+  const rows = leagueTableWrapper.querySelectorAll("tbody tr");
+  if (!rows.length) {
+    entriesRemainingCallout.textContent = "Entries remaining: 0";
+    return;
+  }
+
+  let total = 0;
+  let alive = 0;
+
+  rows.forEach((row) => {
+    total++;
+    const text = (row.textContent || "").toUpperCase();
+    // We tag eliminated entries visually with "ELIMINATED" in the label
+    if (!text.includes("ELIMINATED")) {
+      alive++;
+    }
+  });
+
+  entriesRemainingCallout.textContent =
+    "Entries remaining: " + alive + " of " + total;
+}
+
+// ---------------------- Loading user + standings ----------------------
 
 async function loadLeagueUser() {
   const { data } = await supaLeague.auth.getUser();
@@ -22,6 +73,10 @@ async function loadLeagueUser() {
   if (!leagueUser) {
     if (leagueSection) leagueSection.style.display = "none";
     if (leagueLoginReminder) leagueLoginReminder.style.display = "block";
+    // Even when logged out, show a neutral callout
+    if (entriesRemainingCallout) {
+      entriesRemainingCallout.textContent = "";
+    }
     return;
   }
 
@@ -44,9 +99,17 @@ async function loadLeagueStandings() {
     if (entriesError) throw entriesError;
 
     if (!entries || !entries.length) {
+      leagueEntries = [];
       setLeagueMessage("No entries found yet.", false);
+      if (entriesRemainingCallout) {
+        entriesRemainingCallout.textContent = "Entries remaining: 0";
+      }
+      leagueTableWrapper.innerHTML = "";
       return;
     }
+
+    // Keep a copy of raw entries for the callout helper
+    leagueEntries = entries;
 
     // 2) Load all picks
     const { data: picks, error: picksError } = await supaLeague
@@ -81,7 +144,7 @@ async function loadLeagueStandings() {
     const stats = entries.map((entry) => {
       const entryPicks = picksByEntry.get(entry.id) || new Map();
 
-      // Treat explicit false as eliminated; anything else is active
+      // Treat explicit false as eliminated; anything else as active
       const isActive = entry.is_active === false ? false : true;
 
       return {
@@ -94,8 +157,8 @@ async function loadLeagueStandings() {
     });
 
     // 4) Sort:
-    //    - Active entries (isActive = true) first
-    //    - Then eliminated entries (isActive = false)
+    //    - Active entries first
+    //    - Then eliminated entries
     //    - Within each group, sort by displayName then label
     stats.sort((a, b) => {
       if (a.isActive !== b.isActive) {
@@ -119,8 +182,13 @@ async function loadLeagueStandings() {
       "Error loading league standings: " + (err.message || "Unknown error"),
       true
     );
+    if (entriesRemainingCallout) {
+      entriesRemainingCallout.textContent = "";
+    }
   }
 }
+
+// ---------------------- Rendering ----------------------
 
 function renderLeagueTable(stats, weeks) {
   leagueTableWrapper.innerHTML = "";
@@ -129,6 +197,8 @@ function renderLeagueTable(stats, weeks) {
     const p = document.createElement("p");
     p.textContent = "No league standings to display.";
     leagueTableWrapper.appendChild(p);
+    // If no stats, callout should show 0
+    updateEntriesRemainingCallout();
     return;
   }
 
@@ -169,7 +239,7 @@ function renderLeagueTable(stats, weeks) {
 
     const entryPicks = row.picks;
 
-        weeks.forEach((week) => {
+    weeks.forEach((week) => {
       const td = document.createElement("td");
       td.classList.add("week-cell");
 
@@ -195,13 +265,16 @@ function renderLeagueTable(stats, weeks) {
       tr.appendChild(td);
     });
 
-
     tbody.appendChild(tr);
   });
 
   table.appendChild(tbody);
   leagueTableWrapper.appendChild(table);
+
+  // NEW: After rendering the table, update the "Entries remaining" callout
+  updateEntriesRemainingCallout();
 }
 
-// Initialize
+// ---------------------- Init ----------------------
+
 loadLeagueUser();
