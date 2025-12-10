@@ -111,10 +111,12 @@ async function loadScheduleForWeek(week) {
   const { data, error } = await supaSchedule
     .from("schedule")
     .select(
-      "id, week, kickoff_time_et, home_team, away_team, location, network"
+      // 🔁 NOTE: using kickoff_et here to match your actual column name
+      "id, week, kickoff_et, home_team, away_team, location, network"
     )
     .eq("week", week)
-    .order("kickoff_time_et", { ascending: true });
+    // 🔁 And ordering by kickoff_et as well
+    .order("kickoff_et", { ascending: true });
 
   if (error) {
     console.error(error);
@@ -183,7 +185,8 @@ function renderScheduleGrid(rows, week) {
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "schedule-card-kickoff";
-    timeSpan.textContent = formatKickoffET(g.kickoff_time_et);
+    // 🔁 use kickoff_et from the row
+    timeSpan.textContent = formatKickoffET(g.kickoff_et);
     header.appendChild(timeSpan);
 
     if (g.network) {
