@@ -7,12 +7,19 @@ const leagueLoginReminder = document.getElementById("league-login-reminder");
 const leagueMessage = document.getElementById("league-standings-message");
 const leagueTableWrapper = document.getElementById("league-standings-table-wrapper");
 
-// NEW: callout element for entries remaining
+// Entries remaining callout
 const entriesRemainingCallout = document.getElementById("entries-remaining-callout");
+
+// NEW: Weekly breakdown elements
+const breakdownWeekSelect = document.getElementById("breakdown-week-select");
+const breakdownEmpty = document.getElementById("week-breakdown-empty");
+const breakdownChartCanvas = document.getElementById("week-breakdown-chart");
 
 let leagueUser = null;
 let leagueEntries = [];
-let leaguePicks = [];
+let leaguePicks = [];      // all picks from Supabase
+let leagueWeeks = [];      // list of weeks used in the table
+let breakdownChart = null; // Chart.js instance
 
 // ---------------------- Helpers ----------------------
 
@@ -22,11 +29,11 @@ function setLeagueMessage(text, isError = false) {
   leagueMessage.className = "message " + (isError ? "error" : "success");
 }
 
-// NEW: Update the "Entries remaining" callout
+// Update the "Entries remaining" callout
 function updateEntriesRemainingCallout() {
   if (!entriesRemainingCallout) return;
 
-  // Preferred: use leagueEntries (the raw entries from Supabase)
+  // Preferred: use leagueEntries (raw entries from Supabase)
   if (Array.isArray(leagueEntries) && leagueEntries.length > 0) {
     const total = leagueEntries.length;
     const alive = leagueEntries.filter((e) => e.is_active).length;
@@ -36,7 +43,7 @@ function updateEntriesRemainingCallout() {
     return;
   }
 
-  // Fallback: derive from table rows if leagueEntries isn't available
+  // Fallback: derive from table rows if leagueEntries isn't set
   if (!leagueTableWrapper) {
     entriesRemainingCallout.textContent = "";
     return;
@@ -54,7 +61,6 @@ function updateEntriesRemainingCallout() {
   rows.forEach((row) => {
     total++;
     const text = (row.textContent || "").toUpperCase();
-    // We tag eliminated entries visually with "ELIMINATED" in the label
     if (!text.includes("ELIMINATED")) {
       alive++;
     }
@@ -62,6 +68,135 @@ function updateEntriesRemainingCallout() {
 
   entriesRemainingCallout.textContent =
     "Entries remaining: " + alive + " of " + total;
+}
+
+// Populate the week <select> for the breakdown chart
+function populateWeekSelect(weeks) {
+  if (!breakdownWeekSelect) return;
+
+  breakdownWeekSelect.innerHTML = "";
+
+  weeks.forEach((w) => {
+    const opt = document.createElement("option");
+    opt.value = String(w);
+    opt.textContent = "Week " + w;
+    breakdownWeekSelect.appendChild(opt);
+  });
+
+  // Default to the latest week in the list
+  if (weeks.length > 0) {
+    breakdownWeekSelect.value = String(weeks[weeks.length - 1]);
+  }
+}
+
+function getCurrentBreakdownWeek() {
+  if (!breakdownWeekSelect) return null;
+  const val = breakdownWeekSelect.value;
+  if (!val) return null;
+  const num = Number(val);
+  if (!Number.isFinite(num)) return null;
+  return num;
+}
+
+// Build / update the weekly pick breakdown pie chart
+function updateWeekBreakdownChart() {
+  if (!breakdownChartCanvas) return;
+
+  const week = getCurrentBreakdownWeek();
+  if (!week) {
+    // No week selected
+    if (breakdownEmpty) {
+      breakdownEmpty.style.display = "block";
+      breakdownEmpty.textContent = "Select a week to view pick breakdown.";
+    }
+    if (breakdownChart) {
+      breakdownChart.destroy();
+      breakdownChart = null;
+    }
+    return;
+  }
+
+  const picksThisWeek = (leaguePicks || []).filter(
+    (p) => p.week === week && p.survivor_team
+  );
+
+  if (!picksThisWeek.length) {
+    if (breakdownEmpty) {
+      breakdownEmpty.style.display = "block";
+      breakdownEmpty.textContent =
+        "No picks submitted for Week " + week + " yet.";
+    }
+    if (breakdownChart) {
+      breakdownChart.destroy();
+      breakdownChart = null;
+    }
+    return;
+  } else if (breakdownEmpty) {
+    breakdownEmpty.style.display = "none";
+  }
+
+  // Aggregate counts by team
+  const counts = {};
+  picksThisWeek.forEach((p) => {
+    const team = p.survivor_team;
+    if (!team) return;
+    counts[team] = (counts[team] || 0) + 1;
+  });
+
+  const labels = Object.keys(counts);
+  const data = labels.map((l) => counts[l]);
+
+  // Simple color palette (looped) – you can customize later per team
+  const basePalette = [
+    "#013369", // navy
+    "#D50A0A", // red
+    "#FFB612", // gold
+    "#203731", // green
+    "#4F2683", // purple
+    "#002244", // deep blue
+    "#0085CA", // light blue
+    "#A5ACAF", // silver
+    "#C60C30", // bright red
+    "#006778", // teal
+  ];
+  const colors = labels.map((_, i) => basePalette[i % basePalette.length]);
+
+  if (breakdownChart) {
+    breakdownChart.destroy();
+  }
+
+  breakdownChart = new Chart(breakdownChartCanvas.getContext("2d"), {
+    type: "pie",
+    data: {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: colors,
+        },
+      ],
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: "right",
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const label = ctx.label || "";
+              const value = ctx.parsed || 0;
+              const total = data.reduce((sum, v) => sum + v, 0);
+              const pct = total ? ((value / total) * 100).toFixed(1) : "0.0";
+              return `${label}: ${value} pick${
+                value === 1 ? "" : "s"
+              } (${pct}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
 }
 
 // ---------------------- Loading user + standings ----------------------
@@ -73,7 +208,6 @@ async function loadLeagueUser() {
   if (!leagueUser) {
     if (leagueSection) leagueSection.style.display = "none";
     if (leagueLoginReminder) leagueLoginReminder.style.display = "block";
-    // Even when logged out, show a neutral callout
     if (entriesRemainingCallout) {
       entriesRemainingCallout.textContent = "";
     }
@@ -100,15 +234,30 @@ async function loadLeagueStandings() {
 
     if (!entries || !entries.length) {
       leagueEntries = [];
+      leaguePicks = [];
+      leagueWeeks = [];
+
       setLeagueMessage("No entries found yet.", false);
       if (entriesRemainingCallout) {
         entriesRemainingCallout.textContent = "Entries remaining: 0";
       }
       leagueTableWrapper.innerHTML = "";
+
+      // Clear breakdown UI
+      if (breakdownWeekSelect) breakdownWeekSelect.innerHTML = "";
+      if (breakdownEmpty) {
+        breakdownEmpty.style.display = "block";
+        breakdownEmpty.textContent = "No picks to display yet.";
+      }
+      if (breakdownChart) {
+        breakdownChart.destroy();
+        breakdownChart = null;
+      }
+
       return;
     }
 
-    // Keep a copy of raw entries for the callout helper
+    // Keep entries for the callout helper
     leagueEntries = entries;
 
     // 2) Load all picks
@@ -119,6 +268,7 @@ async function loadLeagueStandings() {
     if (picksError) throw picksError;
 
     const allPicks = picks || [];
+    leaguePicks = allPicks;
 
     // Determine the max week used (fallback to 18)
     let maxWeek = 0;
@@ -129,6 +279,7 @@ async function loadLeagueStandings() {
 
     const weeks = [];
     for (let w = 1; w <= maxWeek; w++) weeks.push(w);
+    leagueWeeks = weeks;
 
     // Build lookup: entryId -> { week -> pick }
     const picksByEntry = new Map();
@@ -175,6 +326,11 @@ async function loadLeagueStandings() {
     });
 
     renderLeagueTable(stats, weeks);
+
+    // Populate week dropdown & initial chart
+    populateWeekSelect(weeks);
+    updateWeekBreakdownChart();
+
     setLeagueMessage("");
   } catch (err) {
     console.error(err);
@@ -197,7 +353,6 @@ function renderLeagueTable(stats, weeks) {
     const p = document.createElement("p");
     p.textContent = "No league standings to display.";
     leagueTableWrapper.appendChild(p);
-    // If no stats, callout should show 0
     updateEntriesRemainingCallout();
     return;
   }
@@ -271,10 +426,18 @@ function renderLeagueTable(stats, weeks) {
   table.appendChild(tbody);
   leagueTableWrapper.appendChild(table);
 
-  // NEW: After rendering the table, update the "Entries remaining" callout
+  // Update the "Entries remaining" callout
   updateEntriesRemainingCallout();
 }
 
-// ---------------------- Init ----------------------
+// ---------------------- Events & Init ----------------------
 
+// When the user changes the breakdown week, rebuild the chart
+if (breakdownWeekSelect) {
+  breakdownWeekSelect.addEventListener("change", () => {
+    updateWeekBreakdownChart();
+  });
+}
+
+// Initialize
 loadLeagueUser();
