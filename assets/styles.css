@@ -169,6 +169,19 @@ li + li {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+.entries-remaining-callout {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  padding: 0.3rem 0.75rem;
+  display: inline-block;
+  border-radius: 999px;
+  background: #0b162a;   /* dark navy-ish */
+  color: #ffb612;        /* gold accent */
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 
 /* ===== Forms (submit page) ===== */
 
