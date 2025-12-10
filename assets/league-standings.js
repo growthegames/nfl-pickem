@@ -10,16 +10,70 @@ const leagueTableWrapper = document.getElementById("league-standings-table-wrapp
 // Entries remaining callout
 const entriesRemainingCallout = document.getElementById("entries-remaining-callout");
 
-// NEW: Weekly breakdown elements
+// Weekly breakdown elements
+const breakdownSection = document.getElementById("week-breakdown-section");
 const breakdownWeekSelect = document.getElementById("breakdown-week-select");
 const breakdownEmpty = document.getElementById("week-breakdown-empty");
 const breakdownChartCanvas = document.getElementById("week-breakdown-chart");
+const toggleBreakdownBtn = document.getElementById("toggle-breakdown-btn");
 
 let leagueUser = null;
 let leagueEntries = [];
 let leaguePicks = [];      // all picks from Supabase
 let leagueWeeks = [];      // list of weeks used in the table
 let breakdownChart = null; // Chart.js instance
+
+// ---------------------- NFL Team Colors ----------------------
+// Primary brand-ish colors for each team (approx).
+// These will be used in the weekly breakdown pie chart.
+const TEAM_COLORS = {
+  "Arizona Cardinals": "#97233F",
+  "Atlanta Falcons": "#A71930",
+  "Baltimore Ravens": "#241773",
+  "Buffalo Bills": "#00338D",
+  "Carolina Panthers": "#0085CA",
+  "Chicago Bears": "#0B162A",
+  "Cincinnati Bengals": "#FB4F14",
+  "Cleveland Browns": "#311D00",
+  "Dallas Cowboys": "#003594",
+  "Denver Broncos": "#FB4F14",
+  "Detroit Lions": "#0076B6",
+  "Green Bay Packers": "#203731",
+  "Houston Texans": "#03202F",
+  "Indianapolis Colts": "#002C5F",
+  "Jacksonville Jaguars": "#006778",
+  "Kansas City Chiefs": "#E31837",
+  "Las Vegas Raiders": "#000000",
+  "Los Angeles Chargers": "#0080C6",
+  "Los Angeles Rams": "#003594",
+  "Miami Dolphins": "#008E97",
+  "Minnesota Vikings": "#4F2683",
+  "New England Patriots": "#002244",
+  "New Orleans Saints": "#D3BC8D",
+  "New York Giants": "#0B2265",
+  "New York Jets": "#125740",
+  "Philadelphia Eagles": "#004C54",
+  "Pittsburgh Steelers": "#FFB612",
+  "San Francisco 49ers": "#AA0000",
+  "Seattle Seahawks": "#002244",
+  "Tampa Bay Buccaneers": "#D50A0A",
+  "Tennessee Titans": "#0C2340",
+  "Washington Commanders": "#5A1414"
+};
+
+// Fallback palette if we somehow see a team name we don't recognize
+const BASE_PALETTE = [
+  "#013369",
+  "#D50A0A",
+  "#FFB612",
+  "#203731",
+  "#4F2683",
+  "#002244",
+  "#0085CA",
+  "#A5ACAF",
+  "#C60C30",
+  "#006778"
+];
 
 // ---------------------- Helpers ----------------------
 
@@ -104,7 +158,6 @@ function updateWeekBreakdownChart() {
 
   const week = getCurrentBreakdownWeek();
   if (!week) {
-    // No week selected
     if (breakdownEmpty) {
       breakdownEmpty.style.display = "block";
       breakdownEmpty.textContent = "Select a week to view pick breakdown.";
@@ -146,20 +199,9 @@ function updateWeekBreakdownChart() {
   const labels = Object.keys(counts);
   const data = labels.map((l) => counts[l]);
 
-  // Simple color palette (looped) – you can customize later per team
-  const basePalette = [
-    "#013369", // navy
-    "#D50A0A", // red
-    "#FFB612", // gold
-    "#203731", // green
-    "#4F2683", // purple
-    "#002244", // deep blue
-    "#0085CA", // light blue
-    "#A5ACAF", // silver
-    "#C60C30", // bright red
-    "#006778", // teal
-  ];
-  const colors = labels.map((_, i) => basePalette[i % basePalette.length]);
+  const colors = labels.map((team, i) => {
+    return TEAM_COLORS[team] || BASE_PALETTE[i % BASE_PALETTE.length];
+  });
 
   if (breakdownChart) {
     breakdownChart.destroy();
@@ -172,14 +214,33 @@ function updateWeekBreakdownChart() {
       datasets: [
         {
           data,
-          backgroundColor: colors,
-        },
-      ],
+          backgroundColor: colors
+        }
+      ]
     },
     options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 1.1, // slightly squarer, keeps it compact
+      layout: {
+        padding: {
+          top: 10,
+          bottom: 10,
+          left: 10,
+          right: 10
+        }
+      },
       plugins: {
         legend: {
-          position: "right",
+          position: "bottom",
+          labels: {
+            boxWidth: 14,
+            boxHeight: 14,
+            font: {
+              size: 11
+            },
+            padding: 8
+          }
         },
         tooltip: {
           callbacks: {
@@ -191,11 +252,11 @@ function updateWeekBreakdownChart() {
               return `${label}: ${value} pick${
                 value === 1 ? "" : "s"
               } (${pct}%)`;
-            },
-          },
-        },
-      },
-    },
+            }
+          }
+        }
+      }
+    }
   });
 }
 
@@ -303,7 +364,7 @@ async function loadLeagueStandings() {
         label: entry.label || "",
         displayName: entry.display_name || "",
         isActive,
-        picks: entryPicks,
+        picks: entryPicks
       };
     });
 
@@ -436,6 +497,26 @@ function renderLeagueTable(stats, weeks) {
 if (breakdownWeekSelect) {
   breakdownWeekSelect.addEventListener("change", () => {
     updateWeekBreakdownChart();
+  });
+}
+
+// Collapsible chart section: hide/show the breakdown block
+if (toggleBreakdownBtn && breakdownSection) {
+  toggleBreakdownBtn.addEventListener("click", () => {
+    const isHidden =
+      breakdownSection.getAttribute("data-collapsed") === "true";
+
+    if (isHidden) {
+      breakdownSection.setAttribute("data-collapsed", "false");
+      breakdownSection.style.maxHeight = "1000px";
+      breakdownSection.style.opacity = "1";
+      toggleBreakdownBtn.textContent = "Hide weekly breakdown";
+    } else {
+      breakdownSection.setAttribute("data-collapsed", "true");
+      breakdownSection.style.maxHeight = "0";
+      breakdownSection.style.opacity = "0";
+      toggleBreakdownBtn.textContent = "Show weekly breakdown";
+    }
   });
 }
 
