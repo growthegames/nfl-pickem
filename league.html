@@ -53,13 +53,13 @@
       </p>
     </section>
 
-   <section id="league-standings-section">
+  <section id="league-standings-section">
   <h2>League Standings</h2>
 
   <!-- Entries remaining callout -->
   <p id="entries-remaining-callout" class="entries-remaining-callout"></p>
 
-  <!-- NEW: Toggle + weekly breakdown -->
+  <!-- Header row with title + collapse toggle -->
   <div class="breakdown-header-row">
     <h3>Weekly Pick Breakdown</h3>
     <button type="button" id="toggle-breakdown-btn" class="ghost-toggle">
@@ -72,8 +72,36 @@
       <label for="breakdown-week-select">Select week:</label>
       <select id="breakdown-week-select"></select>
     </div>
+
+    <!-- NEW: Table vs Chart toggle -->
+    <div class="breakdown-view-toggle">
+      <button
+        type="button"
+        id="breakdown-view-table-btn"
+        class="toggle-chip active"
+      >
+        Table
+      </button>
+      <button
+        type="button"
+        id="breakdown-view-chart-btn"
+        class="toggle-chip"
+      >
+        Pie Chart
+      </button>
+    </div>
+
     <p id="week-breakdown-empty" class="message" style="display:none;"></p>
-    <div class="chart-wrapper">
+
+    <!-- NEW: Table container (default view) -->
+    <div id="week-breakdown-table"></div>
+
+    <!-- Existing chart wrapper, now with id -->
+    <div
+      class="chart-wrapper"
+      id="week-breakdown-chart-wrapper"
+      style="display:none;"
+    >
       <canvas id="week-breakdown-chart"></canvas>
     </div>
   </section>
@@ -82,6 +110,7 @@
   <div id="league-standings-message" class="message"></div>
   <div id="league-standings-table-wrapper"></div>
 </section>
+
 
 
   </main>
