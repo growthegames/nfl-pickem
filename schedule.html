@@ -10,10 +10,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap"
-    rel="stylesheet"
-  >
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
@@ -52,35 +49,20 @@
 
       <div class="schedule-controls">
         <label for="schedule-week-select">Week:</label>
-        <select id="schedule-week-select">
-          <option value="1">Week 1</option>
-          <option value="2">Week 2</option>
-          <option value="3">Week 3</option>
-          <option value="4">Week 4</option>
-          <option value="5">Week 5</option>
-          <option value="6">Week 6</option>
-          <option value="7">Week 7</option>
-          <option value="8">Week 8</option>
-          <option value="9">Week 9</option>
-          <option value="10">Week 10</option>
-          <option value="11">Week 11</option>
-          <option value="12">Week 12</option>
-          <option value="13">Week 13</option>
-          <option value="14">Week 14</option>
-          <option value="15">Week 15</option>
-          <option value="16">Week 16</option>
-          <option value="17">Week 17</option>
-          <option value="18">Week 18</option>
-        </select>
-
-        <button type="button" id="schedule-jump-current">
-          Jump to current week
+        <!-- JS will populate 1–18 -->
+        <select id="schedule-week-select"></select>
+        <button type="button" id="schedule-today-btn">
+          JUMP TO CURRENT WEEK
         </button>
       </div>
 
-      <!-- This is the container schedule.js expects -->
-      <div id="schedule-grid" class="schedule-grid"></div>
+      <!-- Message area the JS uses -->
+      <div id="schedule-message" class="message" style="display:none;"></div>
 
+      <!-- Grid of game cards -->
+      <div id="schedule-grid" class="schedule-grid">
+        <!-- Game cards rendered by schedule.js -->
+      </div>
     </section>
   </main>
 
