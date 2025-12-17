@@ -34,6 +34,9 @@ let breakdownChart = null;
 let breakdownWeeks = [];
 let breakdownPicks = [];
 
+// Deadlines cache: week -> Date
+let weekDeadlineMap = new Map();
+
 // ------------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------------
@@ -56,27 +59,28 @@ function updateEntriesRemainingCallout(stats) {
     "ENTRIES REMAINING: " + activeCount + " / " + stats.length;
 }
 
+function hasDeadlinePassed(week) {
+  const dl = weekDeadlineMap.get(week) || null;
+  if (!dl) return false; // if no deadline configured, treat as not passed
+  return new Date() > dl;
+}
+
 /**
  * Survivor elimination rules:
  * - Any LOSS => eliminated
- * - Missing a pick for any week that has league activity (requiredWeeks) => eliminated
+ * - Missing a pick for any week whose deadline has passed => eliminated
  * - entry.is_active === false => eliminated
  */
-function computeIsActive(entry, picksByEntry, requiredWeeks) {
-  const entryPicks = picksByEntry.get(entry.id) || new Map();
-
+function computeIsActive(entry, entryPicksMap) {
   // Any LOSS eliminates
-  let hasLoss = false;
-  entryPicks.forEach((p) => {
-    if (p.result === "LOSS") hasLoss = true;
-  });
-  if (hasLoss) return false;
+  for (const [, p] of entryPicksMap.entries()) {
+    if (p?.result === "LOSS") return false;
+  }
 
-  // Missing pick in any required week eliminates
-  if (Array.isArray(requiredWeeks) && requiredWeeks.length) {
-    for (const w of requiredWeeks) {
-      if (!entryPicks.get(w)) return false;
-    }
+  // Missing pick in any week whose deadline has passed eliminates
+  for (const [week] of weekDeadlineMap.entries()) {
+    if (!hasDeadlinePassed(week)) continue;
+    if (!entryPicksMap.get(week)) return false;
   }
 
   if (entry.is_active === false) return false;
@@ -103,11 +107,30 @@ async function loadLeagueUser() {
   await loadLeagueStandings();
 }
 
+async function loadWeekDeadlines() {
+  // Pull deadlines (week, deadline)
+  const { data, error } = await supaLeague
+    .from("week_deadlines")
+    .select("week, deadline");
+
+  if (error) throw error;
+
+  weekDeadlineMap = new Map();
+  (data || []).forEach((r) => {
+    if (!r.week) return;
+    if (!r.deadline) return;
+    weekDeadlineMap.set(Number(r.week), new Date(r.deadline));
+  });
+}
+
 async function loadLeagueStandings() {
   setLeagueMessage("Loading league standings...");
 
   try {
-    // 1. All entries
+    // 0) Deadlines (needed to determine when “NO PICK” should apply)
+    await loadWeekDeadlines();
+
+    // 1) All entries
     const { data: entries, error: entriesError } = await supaLeague
       .from("entries")
       .select("id, label, display_name, is_active, created_at")
@@ -123,7 +146,7 @@ async function loadLeagueStandings() {
       return;
     }
 
-    // 2. All picks (for standings + breakdown)
+    // 2) All picks (for standings + breakdown)
     const { data: picks, error: picksError } = await supaLeague
       .from("picks")
       .select("entry_id, week, survivor_team, result");
@@ -135,23 +158,24 @@ async function loadLeagueStandings() {
     // Cache for breakdown
     breakdownPicks = allPicks.slice();
 
-    // Determine weeks to display
-    let maxWeek = 0;
-    const weeksWithAnyPicks = new Set();
-
+    // Determine weeks to display:
+    // - Show up to max week that has *either* picks or a configured deadline (whichever is larger)
+    let maxWeekFromPicks = 0;
     allPicks.forEach((p) => {
-      if (p.week && p.week > maxWeek) maxWeek = p.week;
-      if (p.week) weeksWithAnyPicks.add(p.week);
+      if (p.week && p.week > maxWeekFromPicks) maxWeekFromPicks = p.week;
     });
 
+    let maxWeekFromDeadlines = 0;
+    for (const w of weekDeadlineMap.keys()) {
+      if (w > maxWeekFromDeadlines) maxWeekFromDeadlines = w;
+    }
+
+    let maxWeek = Math.max(maxWeekFromPicks, maxWeekFromDeadlines);
     if (!maxWeek) maxWeek = 18;
+    if (maxWeek > 18) maxWeek = 18;
 
     const weeks = [];
     for (let w = 1; w <= maxWeek; w++) weeks.push(w);
-
-    // Required weeks = weeks that have any picks in the league
-    // (If a week has started/been played and people picked, missing pick => eliminated)
-    const requiredWeeks = Array.from(weeksWithAnyPicks).sort((a, b) => a - b);
 
     // Build lookup: entry_id -> Map(week -> pick)
     const picksByEntry = new Map();
@@ -160,13 +184,13 @@ async function loadLeagueStandings() {
       if (!picksByEntry.has(p.entry_id)) {
         picksByEntry.set(p.entry_id, new Map());
       }
-      picksByEntry.get(p.entry_id).set(p.week, p);
+      picksByEntry.get(p.entry_id).set(Number(p.week), p);
     });
 
     // Build per-entry stats (including isActive)
     const stats = entries.map((entry) => {
       const entryPicks = picksByEntry.get(entry.id) || new Map();
-      const isActive = computeIsActive(entry, picksByEntry, requiredWeeks);
+      const isActive = computeIsActive(entry, entryPicks);
 
       return {
         id: entry.id,
@@ -175,7 +199,6 @@ async function loadLeagueStandings() {
         createdAt: entry.created_at || null,
         isActive,
         picks: entryPicks,
-        requiredWeeks,
       };
     });
 
@@ -250,33 +273,41 @@ function renderLeagueTable(stats, weeks) {
     const label = row.label || "";
     entryCell.textContent = `${name} – ${label}`;
 
+    // Stronger eliminated formatting
     if (!row.isActive) {
       entryCell.classList.add("entry-eliminated");
-      entryCell.title =
-        "Eliminated (loss or missed pick in an active week)";
+      entryCell.title = "Eliminated (loss or missed pick after deadline)";
+      entryCell.style.textDecoration = "line-through";
+      entryCell.style.opacity = "0.75";
     }
 
     tr.appendChild(entryCell);
 
     const entryPicks = row.picks;
-    const requiredWeeks = row.requiredWeeks || [];
 
     weeks.forEach((week) => {
       const td = document.createElement("td");
       td.classList.add("week-cell");
 
       const pick = entryPicks.get(week);
-
-      // Missing pick in a required week => treat like a LOSS visually
-      const isRequiredWeek = requiredWeeks.includes(week);
+      const deadlinePassed = hasDeadlinePassed(week);
 
       if (!pick) {
-        td.textContent = "";
-
-        if (!row.isActive && isRequiredWeek) {
+        // Before deadline: show blank/pending (NOT red, NOT “NO PICK”)
+        if (!deadlinePassed) {
+          td.textContent = "";
+          td.classList.add("cell-pending");
+          td.style.backgroundColor = "rgba(255, 255, 255, 0.04)";
+        } else {
+          // After deadline: missing pick = “NO PICK” loss
           td.textContent = "NO PICK";
           td.classList.add("cell-loss", "cell-missed-pick");
           td.style.backgroundColor = "rgba(220, 20, 60, 0.28)";
+
+          // Make it extra obvious for eliminated rows
+          if (!row.isActive) {
+            td.style.textDecoration = "line-through";
+          }
         }
       } else {
         td.textContent = pick.survivor_team || "";
@@ -287,7 +318,13 @@ function renderLeagueTable(stats, weeks) {
         } else if (pick.result === "LOSS") {
           td.classList.add("cell-loss", "cell-eliminating");
           td.style.backgroundColor = "rgba(220, 20, 60, 0.28)";
+
+          // Strike through the losing pick for eliminated rows
+          if (!row.isActive) {
+            td.style.textDecoration = "line-through";
+          }
         } else {
+          // result is null/pending
           td.classList.add("cell-pending");
           td.style.backgroundColor = "rgba(255, 255, 255, 0.04)";
         }
@@ -336,29 +373,36 @@ function initWeeklyBreakdown(weeks, picks) {
     });
   }
 
-  // Default to latest week with picks
+  // Default view: TABLE
   if (sortedWeeks.length) {
     breakdownWeekSelect.value = String(sortedWeeks[sortedWeeks.length - 1]);
+
+    if (breakdownTableBtn) breakdownTableBtn.classList.add("active");
+    if (breakdownPieBtn) breakdownPieBtn.classList.remove("active");
+
+    // show table / hide chart
+    if (breakdownTableContainer) breakdownTableContainer.style.display = "block";
+    if (breakdownChartCanvas) breakdownChartCanvas.style.display = "none";
+
     renderBreakdownForSelectedWeek("table");
   } else {
     clearBreakdownVisuals();
+    if (breakdownTableContainer) breakdownTableContainer.style.display = "none";
+    if (breakdownChartCanvas) breakdownChartCanvas.style.display = "none";
   }
 }
 
 function clearBreakdownVisuals() {
   if (breakdownTableContainer) breakdownTableContainer.innerHTML = "";
+
   if (breakdownChart && typeof breakdownChart.destroy === "function") {
     breakdownChart.destroy();
     breakdownChart = null;
   }
+
   if (breakdownChartCanvas) {
     const ctx = breakdownChartCanvas.getContext("2d");
-    ctx.clearRect(
-      0,
-      0,
-      breakdownChartCanvas.width,
-      breakdownChartCanvas.height
-    );
+    ctx.clearRect(0, 0, breakdownChartCanvas.width, breakdownChartCanvas.height);
   }
 }
 
@@ -469,18 +513,23 @@ function renderBreakdownPieChart(week) {
 
 function renderBreakdownForSelectedWeek(mode) {
   if (!breakdownWeekSelect) return;
-  const selected = Number(breakdownWeekSelect.value);
-  if (!selected || selected < 1 || selected > 18) {
+
+  const selectedWeek = Number(breakdownWeekSelect.value);
+  if (!selectedWeek || selectedWeek < 1 || selectedWeek > 18) {
     clearBreakdownVisuals();
+    if (breakdownTableContainer) breakdownTableContainer.style.display = "none";
+    if (breakdownChartCanvas) breakdownChartCanvas.style.display = "none";
     return;
   }
 
   if (mode === "pie") {
-    renderBreakdownTable(selected);
-    renderBreakdownPieChart(selected);
+    if (breakdownTableContainer) breakdownTableContainer.style.display = "none";
+    if (breakdownChartCanvas) breakdownChartCanvas.style.display = "block";
+    renderBreakdownPieChart(selectedWeek);
   } else {
-    renderBreakdownTable(selected);
-    renderBreakdownPieChart(selected);
+    if (breakdownChartCanvas) breakdownChartCanvas.style.display = "none";
+    if (breakdownTableContainer) breakdownTableContainer.style.display = "block";
+    renderBreakdownTable(selectedWeek);
   }
 }
 
@@ -489,13 +538,21 @@ function renderBreakdownForSelectedWeek(mode) {
 // ------------------------------------------------------------------
 
 function wireBreakdownEvents() {
+  // Ensure breakdown starts visible unless you explicitly hide it in CSS
+  if (breakdownInner && (!breakdownInner.style.display || breakdownInner.style.display === "")) {
+    breakdownInner.style.display = "block";
+  }
+
   if (breakdownToggleBtn && breakdownInner) {
+    breakdownToggleBtn.textContent =
+      breakdownInner.style.display === "none"
+        ? "SHOW WEEKLY BREAKDOWN"
+        : "HIDE WEEKLY BREAKDOWN";
+
     breakdownToggleBtn.addEventListener("click", () => {
-      const isHidden =
-        breakdownInner.style.display === "none" ||
-        breakdownInner.style.display === "";
-      breakdownInner.style.display = isHidden ? "block" : "none";
-      breakdownToggleBtn.textContent = isHidden
+      const currentlyHidden = breakdownInner.style.display === "none";
+      breakdownInner.style.display = currentlyHidden ? "block" : "none";
+      breakdownToggleBtn.textContent = currentlyHidden
         ? "HIDE WEEKLY BREAKDOWN"
         : "SHOW WEEKLY BREAKDOWN";
     });
@@ -503,7 +560,9 @@ function wireBreakdownEvents() {
 
   if (breakdownWeekSelect) {
     breakdownWeekSelect.addEventListener("change", () => {
-      renderBreakdownForSelectedWeek("table");
+      const mode =
+        breakdownPieBtn?.classList.contains("active") ? "pie" : "table";
+      renderBreakdownForSelectedWeek(mode);
     });
   }
 
