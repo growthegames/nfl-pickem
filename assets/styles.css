@@ -256,6 +256,28 @@ li + li {
   margin-left: auto;
   margin-right: auto;
 }
+/* Make eliminated entries much more obvious */
+.eliminated-row {
+  opacity: 0.65;
+}
+
+.entry-eliminated {
+  text-decoration: line-through;
+}
+
+/* Strikethrough on the eliminating cell (LOSS or NO PICK) */
+.week-cell.cell-loss.cell-eliminating,
+.week-cell.cell-loss.cell-missed-pick {
+  text-decoration: line-through;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Optional: make "NO PICK" stand out slightly */
+.week-cell.cell-missed-pick {
+  text-transform: uppercase;
+}
+
 
 /* Breakdown table styles */
 .breakdown-table {
