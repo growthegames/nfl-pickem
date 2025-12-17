@@ -26,9 +26,6 @@ const breakdownTableContainer = document.getElementById(
   "breakdown-table-container"
 );
 const breakdownChartCanvas = document.getElementById("breakdown-chart");
-const breakdownChartWrapper = document.querySelector(
-  ".breakdown-chart-wrapper"
-);
 
 // Chart.js instance
 let breakdownChart = null;
@@ -36,42 +33,6 @@ let breakdownChart = null;
 // Cached data for breakdown
 let breakdownWeeks = [];
 let breakdownPicks = [];
-
-// Team colors for pie chart (primary colors)
-const TEAM_COLORS = {
-  "Arizona Cardinals": "#97233F",
-  "Atlanta Falcons": "#A71930",
-  "Baltimore Ravens": "#241773",
-  "Buffalo Bills": "#00338D",
-  "Carolina Panthers": "#0085CA",
-  "Chicago Bears": "#0B162A",
-  "Cincinnati Bengals": "#FB4F14",
-  "Cleveland Browns": "#311D00",
-  "Dallas Cowboys": "#041E42",
-  "Denver Broncos": "#FB4F14",
-  "Detroit Lions": "#0076B6",
-  "Green Bay Packers": "#203731",
-  "Houston Texans": "#03202F",
-  "Indianapolis Colts": "#002C5F",
-  "Jacksonville Jaguars": "#006778",
-  "Kansas City Chiefs": "#E31837",
-  "Las Vegas Raiders": "#000000",
-  "Los Angeles Chargers": "#002A5E",
-  "Los Angeles Rams": "#003594",
-  "Miami Dolphins": "#008E97",
-  "Minnesota Vikings": "#4F2683",
-  "New England Patriots": "#002244",
-  "New Orleans Saints": "#D3BC8D",
-  "New York Giants": "#0B2265",
-  "New York Jets": "#125740",
-  "Philadelphia Eagles": "#004C54",
-  "Pittsburgh Steelers": "#101820",
-  "San Francisco 49ers": "#AA0000",
-  "Seattle Seahawks": "#002244",
-  "Tampa Bay Buccaneers": "#D50A0A",
-  "Tennessee Titans": "#4B92DB",
-  "Washington Commanders": "#5A1414",
-};
 
 // ------------------------------------------------------------------
 // Helpers
@@ -95,20 +56,29 @@ function updateEntriesRemainingCallout(stats) {
     "ENTRIES REMAINING: " + activeCount + " / " + stats.length;
 }
 
-// Determine if an entry is still alive based on its picks & results.
-// - If it has any LOSS, it is eliminated.
-// - Otherwise, it is active unless entry.is_active === false.
-function computeIsActive(entry, picksByEntry) {
+/**
+ * Survivor elimination rules:
+ * - Any LOSS => eliminated
+ * - Missing a pick for any week that has league activity (requiredWeeks) => eliminated
+ * - entry.is_active === false => eliminated
+ */
+function computeIsActive(entry, picksByEntry, requiredWeeks) {
   const entryPicks = picksByEntry.get(entry.id) || new Map();
 
+  // Any LOSS eliminates
   let hasLoss = false;
   entryPicks.forEach((p) => {
-    if (p.result === "LOSS") {
-      hasLoss = true;
-    }
+    if (p.result === "LOSS") hasLoss = true;
   });
-
   if (hasLoss) return false;
+
+  // Missing pick in any required week eliminates
+  if (Array.isArray(requiredWeeks) && requiredWeeks.length) {
+    for (const w of requiredWeeks) {
+      if (!entryPicks.get(w)) return false;
+    }
+  }
+
   if (entry.is_active === false) return false;
   return true;
 }
@@ -165,15 +135,23 @@ async function loadLeagueStandings() {
     // Cache for breakdown
     breakdownPicks = allPicks.slice();
 
-    // Determine max week (for columns)
+    // Determine weeks to display
     let maxWeek = 0;
+    const weeksWithAnyPicks = new Set();
+
     allPicks.forEach((p) => {
       if (p.week && p.week > maxWeek) maxWeek = p.week;
+      if (p.week) weeksWithAnyPicks.add(p.week);
     });
+
     if (!maxWeek) maxWeek = 18;
 
     const weeks = [];
     for (let w = 1; w <= maxWeek; w++) weeks.push(w);
+
+    // Required weeks = weeks that have any picks in the league
+    // (If a week has started/been played and people picked, missing pick => eliminated)
+    const requiredWeeks = Array.from(weeksWithAnyPicks).sort((a, b) => a - b);
 
     // Build lookup: entry_id -> Map(week -> pick)
     const picksByEntry = new Map();
@@ -188,7 +166,7 @@ async function loadLeagueStandings() {
     // Build per-entry stats (including isActive)
     const stats = entries.map((entry) => {
       const entryPicks = picksByEntry.get(entry.id) || new Map();
-      const isActive = computeIsActive(entry, picksByEntry);
+      const isActive = computeIsActive(entry, picksByEntry, requiredWeeks);
 
       return {
         id: entry.id,
@@ -197,6 +175,7 @@ async function loadLeagueStandings() {
         createdAt: entry.created_at || null,
         isActive,
         picks: entryPicks,
+        requiredWeeks,
       };
     });
 
@@ -262,17 +241,25 @@ function renderLeagueTable(stats, weeks) {
 
   stats.forEach((row) => {
     const tr = document.createElement("tr");
-    if (!row.isActive) {
-      tr.classList.add("eliminated-row");
-    }
+    if (!row.isActive) tr.classList.add("eliminated-row");
 
     const entryCell = document.createElement("td");
+    entryCell.classList.add("entry-cell");
+
     const name = row.displayName || "Entry";
     const label = row.label || "";
     entryCell.textContent = `${name} – ${label}`;
+
+    if (!row.isActive) {
+      entryCell.classList.add("entry-eliminated");
+      entryCell.title =
+        "Eliminated (loss or missed pick in an active week)";
+    }
+
     tr.appendChild(entryCell);
 
     const entryPicks = row.picks;
+    const requiredWeeks = row.requiredWeeks || [];
 
     weeks.forEach((week) => {
       const td = document.createElement("td");
@@ -280,8 +267,17 @@ function renderLeagueTable(stats, weeks) {
 
       const pick = entryPicks.get(week);
 
+      // Missing pick in a required week => treat like a LOSS visually
+      const isRequiredWeek = requiredWeeks.includes(week);
+
       if (!pick) {
         td.textContent = "";
+
+        if (!row.isActive && isRequiredWeek) {
+          td.textContent = "NO PICK";
+          td.classList.add("cell-loss", "cell-missed-pick");
+          td.style.backgroundColor = "rgba(220, 20, 60, 0.28)";
+        }
       } else {
         td.textContent = pick.survivor_team || "";
 
@@ -289,7 +285,7 @@ function renderLeagueTable(stats, weeks) {
           td.classList.add("cell-win");
           td.style.backgroundColor = "rgba(0, 128, 0, 0.25)";
         } else if (pick.result === "LOSS") {
-          td.classList.add("cell-loss");
+          td.classList.add("cell-loss", "cell-eliminating");
           td.style.backgroundColor = "rgba(220, 20, 60, 0.28)";
         } else {
           td.classList.add("cell-pending");
@@ -340,7 +336,7 @@ function initWeeklyBreakdown(weeks, picks) {
     });
   }
 
-  // Default to latest week with picks, table view visible
+  // Default to latest week with picks
   if (sortedWeeks.length) {
     breakdownWeekSelect.value = String(sortedWeeks[sortedWeeks.length - 1]);
     renderBreakdownForSelectedWeek("table");
@@ -350,13 +346,7 @@ function initWeeklyBreakdown(weeks, picks) {
 }
 
 function clearBreakdownVisuals() {
-  if (breakdownTableContainer) {
-    breakdownTableContainer.innerHTML = "";
-    breakdownTableContainer.style.display = "block";
-  }
-  if (breakdownChartWrapper) {
-    breakdownChartWrapper.style.display = "none";
-  }
+  if (breakdownTableContainer) breakdownTableContainer.innerHTML = "";
   if (breakdownChart && typeof breakdownChart.destroy === "function") {
     breakdownChart.destroy();
     breakdownChart = null;
@@ -462,33 +452,17 @@ function renderBreakdownPieChart(week) {
     return;
   }
 
-  const colors = labels.map(
-    (team) => TEAM_COLORS[team] || "#888888" // fallback neutral
-  );
-
   const ctx = breakdownChartCanvas.getContext("2d");
   breakdownChart = new Chart(ctx, {
     type: "pie",
     data: {
       labels,
-      datasets: [
-        {
-          data: counts,
-          backgroundColor: colors,
-        },
-      ],
+      datasets: [{ data: counts }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "right",
-          labels: {
-            color: "#f5f5f5",
-          },
-        },
-      },
+      plugins: { legend: { position: "right" } },
     },
   });
 }
@@ -501,23 +475,11 @@ function renderBreakdownForSelectedWeek(mode) {
     return;
   }
 
-  const viewMode = mode === "pie" ? "pie" : "table";
-
-  // Button active states
-  if (breakdownTableBtn) {
-    breakdownTableBtn.classList.toggle("active", viewMode === "table");
-  }
-  if (breakdownPieBtn) {
-    breakdownPieBtn.classList.toggle("active", viewMode === "pie");
-  }
-
-  if (viewMode === "table") {
-    if (breakdownTableContainer) breakdownTableContainer.style.display = "block";
-    if (breakdownChartWrapper) breakdownChartWrapper.style.display = "none";
+  if (mode === "pie") {
     renderBreakdownTable(selected);
+    renderBreakdownPieChart(selected);
   } else {
-    if (breakdownTableContainer) breakdownTableContainer.style.display = "none";
-    if (breakdownChartWrapper) breakdownChartWrapper.style.display = "block";
+    renderBreakdownTable(selected);
     renderBreakdownPieChart(selected);
   }
 }
@@ -541,19 +503,22 @@ function wireBreakdownEvents() {
 
   if (breakdownWeekSelect) {
     breakdownWeekSelect.addEventListener("change", () => {
-      // When changing week, default back to table view
       renderBreakdownForSelectedWeek("table");
     });
   }
 
   if (breakdownTableBtn) {
     breakdownTableBtn.addEventListener("click", () => {
+      breakdownTableBtn.classList.add("active");
+      breakdownPieBtn && breakdownPieBtn.classList.remove("active");
       renderBreakdownForSelectedWeek("table");
     });
   }
 
   if (breakdownPieBtn) {
     breakdownPieBtn.addEventListener("click", () => {
+      breakdownPieBtn.classList.add("active");
+      breakdownTableBtn && breakdownTableBtn.classList.remove("active");
       renderBreakdownForSelectedWeek("pie");
     });
   }
